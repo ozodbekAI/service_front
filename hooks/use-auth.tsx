@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // In a real app, this would be an API call
       // For demo purposes, we'll simulate a successful login
-      const response = await fetch("http://127.0.0.1:8000/api/v1/user/login/", {
+      const response = await fetch("http:/104.248.12.204:8000/api/v1/user/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     try {
       // In a real app, this would be an API call
-      const response = await fetch("http://127.0.0.1:8000/api/v1/user/register/", {
+      const response = await fetch("http:/104.248.12.204:8000/api/v1/user/register/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
