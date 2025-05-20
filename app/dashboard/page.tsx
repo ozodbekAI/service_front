@@ -444,14 +444,6 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-center py-4 text-muted-foreground">Sizda hali buyurtmalar yo'q.</p>
-                  <div className="flex justify-center">
-                    <Link href="/dashboard/orders/new">
-                      <Button>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Yangi buyurtma yaratish
-                      </Button>
-                    </Link>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
