@@ -26,30 +26,30 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
             {children}
             <Toaster
-              position="top-right"
+              position="bottom-center"
               toastOptions={{
-                duration: 5000,
+                duration: 2000, 
                 style: {
                   background: 'var(--background)',
                   color: 'var(--foreground)',
                   border: '1px solid var(--border)',
                 },
                 success: {
-                  duration: 3000,
+                  duration: 1500, 
                   iconTheme: {
                     primary: '#10b981',
                     secondary: 'white',
                   },
                 },
                 error: {
-                  duration: 5000,
+                  duration: 2000, 
                   iconTheme: {
                     primary: '#ef4444',
                     secondary: 'white',
                   },
                 },
               }}
-            />
+          />
           </ThemeProvider>
         </Providers>
       </body>
