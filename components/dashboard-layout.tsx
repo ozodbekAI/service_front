@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useMobile } from "@/hooks/use-mobile"
+import { fetchNotifications } from "@/lib/api" // Import the API function to fetch notifications
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -36,11 +37,30 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isMobile = useMobile()
   const [unreadNotifications, setUnreadNotifications] = useState(0)
 
-  // Fetch unread notifications count
+  // O'qilmagan bildirishnomalar sonini olish - get count of unread notifications
   useEffect(() => {
-    if (user) {
-      // This would be replaced with an actual API call
-      setUnreadNotifications(3) // Example value
+    const getUnreadNotificationsCount = async () => {
+      if (user) {
+        try {
+          // Fetch notifications from the API
+          const notifications = await fetchNotifications()
+          // Count only unread notifications
+          const unreadCount = notifications.filter(notification => !notification.read).length
+          setUnreadNotifications(unreadCount)
+        } catch (error) {
+          console.error("Failed to fetch notifications:", error)
+          setUnreadNotifications(0) // Reset to 0 on error
+        }
+      }
+    }
+    
+    getUnreadNotificationsCount()
+    
+    // Optional: Set up a polling mechanism to check for new notifications periodically
+    const intervalId = setInterval(getUnreadNotificationsCount, 60000) // Check every minute
+    
+    return () => {
+      clearInterval(intervalId) // Clean up on component unmount
     }
   }, [user])
 
@@ -52,17 +72,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   const navigation: NavItem[] = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Products", href: "/dashboard/products", icon: Package },
-    { name: "Orders", href: "/dashboard/orders", icon: ClipboardList },
-    { name: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
-    { name: "Notifications", href: "/dashboard/notifications", icon: Bell, badge: unreadNotifications },
+    { name: "Bosh sahifa", href: "/dashboard", icon: Home },
+    { name: "Mahsulotlar", href: "/dashboard/products", icon: Package },
+    { name: "Buyurtmalar", href: "/dashboard/orders", icon: ClipboardList },
+    { name: "E'lonlar", href: "/dashboard/announcements", icon: Megaphone },
+    { 
+      name: "Bildirishnomalar", 
+      href: "/dashboard/notifications", 
+      icon: Bell, 
+      badge: unreadNotifications > 0 ? unreadNotifications : undefined 
+    },
   ]
 
-  // Admin-only navigation items
+  // Faqat admin uchun navigatsiya elementlari
   const adminNavigation: NavItem[] = [
-    { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "Statistics", href: "/dashboard/statistics", icon: BarChart3 },
+    { name: "Foydalanuvchilar", href: "/dashboard/users", icon: Users },
+    { name: "Statistika", href: "/dashboard/statistics", icon: BarChart3 },
   ]
 
   const isAdmin = user?.role === "admin"
@@ -70,7 +95,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navItems = [...navigation, ...(isAdmin ? adminNavigation : [])]
 
-  const initials = user?.username ? user.username.substring(0, 2).toUpperCase() : "U"
+  const initials = user?.username ? user.username.substring(0, 2).toUpperCase() : "F"
 
   const NavLinks = () => (
     <>
@@ -94,7 +119,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <Link href="/dashboard/settings">
           <Button variant={pathname === "/dashboard/settings" ? "secondary" : "ghost"} className="w-full justify-start">
             <Settings className="mr-2 h-4 w-4" />
-            Settings
+            Sozlamalar
           </Button>
         </Link>
         <Button
@@ -103,7 +128,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           onClick={logout}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          Logout
+          Chiqish
         </Button>
       </div>
     </>
@@ -111,12 +136,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-muted/40">
-      {/* Mobile Header */}
+      {/* Mobil Sarlavha */}
       <header className="lg:hidden bg-white border-b sticky top-0 z-30">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center space-x-2">
             <Monitor className="h-5 w-5 text-primary" />
-            <span className="font-bold">CompService</span>
+            <span className="font-bold">KompXizmat</span>
           </div>
           <Sheet>
             <SheetTrigger asChild>
@@ -127,7 +152,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <SheetContent side="left" className="w-64">
               <div className="flex items-center space-x-2 mb-6">
                 <Monitor className="h-5 w-5 text-primary" />
-                <span className="font-bold">CompService</span>
+                <span className="font-bold">KompXizmat</span>
               </div>
               <div className="flex items-center space-x-3 mb-6">
                 <Avatar>
@@ -145,13 +170,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       </header>
 
       <div className="flex">
-        {/* Desktop Sidebar */}
+        {/* Kompyuter Yon Paneli */}
         {!isMobile && (
           <aside className="hidden lg:block w-64 border-r bg-card h-screen sticky top-0">
             <div className="p-6">
               <div className="flex items-center space-x-2 mb-8">
                 <Monitor className="h-6 w-6 text-primary" />
-                <span className="text-xl font-bold">CompService</span>
+                <span className="text-xl font-bold">KompXizmat</span>
               </div>
               <div className="flex items-center space-x-3 mb-6">
                 <Avatar>
@@ -167,7 +192,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </aside>
         )}
 
-        {/* Main Content */}
+        {/* Asosiy Kontent */}
         <main className="flex-1">
           <div className="container mx-auto px-4 py-6">{children}</div>
         </main>

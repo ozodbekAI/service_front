@@ -240,10 +240,10 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {isClient && (
-                    <Link href="/dashboard/orders/new">
+                    <Link href="/dashboard/announcements/new">
                       <Button className="w-full">
                         <Plus className="mr-2 h-4 w-4" />
-                        Yangi buyurtma yaratish
+                        Yangi e'lon yaratish
                       </Button>
                     </Link>
                   )}
