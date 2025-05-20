@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -10,7 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Monitor, AlertCircle } from "lucide-react"
+import { Toaster, toast } from "react-hot-toast"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function RegisterPage() {
@@ -23,6 +25,8 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   })
+  const [isAgreed, setIsAgreed] = useState(false)
+  const [isTermsOpen, setIsTermsOpen] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
@@ -35,8 +39,15 @@ export default function RegisterPage() {
     e.preventDefault()
     setError("")
 
+    if (!isAgreed) {
+      setError("Ro‘yxatdan o‘tish uchun foydalanish shartlariga rozilik berishingiz kerak.")
+      toast.error("Foydalanish shartlariga rozilik berishingiz kerak!")
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
+      setError("Parollar mos kelmadi")
+      toast.error("Parollar mos kelmadi!")
       return
     }
 
@@ -49,9 +60,11 @@ export default function RegisterPage() {
         phone: formData.phone,
         password: formData.password,
       })
+      toast.success("Hisob muvaffaqiyatli yaratildi!")
       router.push("/login?registered=true")
     } catch (err: any) {
-      setError(err.message || "Registration failed. Please try again.")
+      setError(err.message || "Ro‘yxatdan o‘tishda xato yuz berdi. Iltimos, qayta urinib ko‘ring.")
+      toast.error("Ro‘yxatdan o‘tishda xato yuz berdi!")
     } finally {
       setIsLoading(false)
     }
@@ -63,14 +76,14 @@ export default function RegisterPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
             <Monitor className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">CompService</span>
+            <span className="text-xl font-bold">KompXizmat</span>
           </Link>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Create an account</CardTitle>
-            <CardDescription>Enter your details to create a new account</CardDescription>
+            <CardTitle className="text-2xl">Hisob yaratish</CardTitle>
+            <CardDescription>Yangi hisob yaratish uchun ma'lumotlaringizni kiriting</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -81,15 +94,15 @@ export default function RegisterPage() {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username">Foydalanuvchi nomi</Label>
                 <Input id="username" name="username" value={formData.username} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Elektron pochta</Label>
                 <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone">Telefon</Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -101,7 +114,7 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Parol</Label>
                 <Input
                   id="password"
                   name="password"
@@ -112,7 +125,7 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Parolni tasdiqlash</Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -122,20 +135,51 @@ export default function RegisterPage() {
                   required
                 />
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="agree" checked={isAgreed} onCheckedChange={(checked) => setIsAgreed(checked as boolean)} />
+                <Label htmlFor="agree" className="text-sm">
+                  <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
+                    <DialogTrigger asChild>
+                      <span className="text-primary hover:underline cursor-pointer">Foydalanish shartlari</span>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Foydalanish shartlari</DialogTitle>
+                      </DialogHeader>
+                      <div className="max-h-[60vh] overflow-y-auto">
+                        <p className="text-sm text-muted-foreground">
+                          Ushbu saytdan foydalanish orqali siz quyidagi shartlarga rozilik bildirasiz:
+                        </p>
+                        <ul className="list-disc pl-5 mt-2 text-sm text-muted-foreground">
+                          <li>Shaxsiy ma'lumotlaringizni faqat sayt xizmatlarini taqdim etish uchun ishlatamiz.</li>
+                          <li>Ma'lumotlaringiz uchinchi shaxslarga berilmaydi, qonun talab qilgan holatlar bundan mustasno.</li>
+                          <li>Sayt xizmatlaridan noqonuniy maqsadlarda foydalanish taqiqlanadi.</li>
+                          <li>Hisobingiz xavfsizligi uchun parolingizni maxfiy saqlashingiz kerak.</li>
+                        </ul>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          To‘liq shartlar bilan tanishish uchun administrator bilan bog‘laning.
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>{" "}
+                  va ma'lumotlarni saqlashga roziman
+                </Label>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Register"}
+              <Button type="submit" className="w-full" disabled={isLoading || !isAgreed}>
+                {isLoading ? "Hisob yaratilmoqda..." : "Ro‘yxatdan o‘tish"}
               </Button>
               <div className="text-center text-sm">
-                Already have an account?{" "}
+                Hisobingiz bormi?{" "}
                 <Link href="/login" className="text-primary hover:underline">
-                  Login
+                  Tizimga kirish
                 </Link>
               </div>
             </CardFooter>
           </form>
         </Card>
+        <Toaster />
       </div>
     </div>
   )

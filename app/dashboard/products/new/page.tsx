@@ -14,7 +14,7 @@ import { ArrowLeft, Upload, X, Plus } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { createProduct, fetchProductCategories, uploadProductImage } from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 
 interface Category {
   id: number;
@@ -24,8 +24,7 @@ interface Category {
 
 export default function NewProductPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -41,25 +40,24 @@ export default function NewProductPage() {
   useEffect(() => {
     const loadCategories = async () => {
       setIsLoading(true);
+      const loadingToast = toast.loading("Kategoriyalar yuklanmoqda...");
       try {
         const data = await fetchProductCategories();
         setCategories(data);
+        toast.success("Kategoriyalar muvaffaqiyatli yuklandi!", { id: loadingToast });
       } catch (error) {
-        console.error("Failed to load categories:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load categories. Please try again.",
+        console.error("Kategoriyalarni yuklashda xato:", error);
+        toast.error("Kategoriyalarni yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (user && (user.role === "admin" || user.role === "manager")) {
-      loadCategories();
-    }
-  }, [user, toast]);
+    if (authLoading || !user || (user.role !== "admin" && user.role !== "manager")) return;
+    loadCategories();
+  }, [user, authLoading]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -84,10 +82,11 @@ export default function NewProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    const loadingToast = toast.loading("Mahsulot yaratilmoqda...");
 
     try {
       if (!formData.name || !formData.price || !formData.quantity || !formData.category) {
-        throw new Error("Please fill in all required fields");
+        throw new Error("Iltimos, barcha majburiy maydonlarni to'ldiring");
       }
 
       const productData = {
@@ -108,40 +107,61 @@ export default function NewProductPage() {
           imageFormData.append("is_main", i === 0 ? "true" : "false");
           await uploadProductImage(imageFormData);
         }
-        toast({
-          title: "Success",
-          description: "Product created successfully with images",
-        });
+        toast.success("Mahsulot rasmlar bilan muvaffaqiyatli yaratildi", { id: loadingToast });
       } else {
-        toast({
-          title: "Success",
-          description: "Product created successfully",
-        });
+        toast.success("Mahsulot muvaffaqiyatli yaratildi", { id: loadingToast });
       }
 
       router.push(`/dashboard/products?created=true`);
     } catch (error: any) {
-      console.error("Failed to create product:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to create product. Please try again.",
+      console.error("Mahsulot yaratishda xato:", error);
+      toast.error(error.message || "Mahsulot yaratishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!user || (user.role !== "admin" && user.role !== "manager")) {
+  if (authLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">Only admins and managers can create products.</p>
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, sahifa yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Mahsulot yaratish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (user.role !== "admin" && user.role !== "manager") {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Faqat adminlar va menejerlar mahsulot yarata oladi.</p>
             <Button onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
+              Orqaga qaytish
             </Button>
           </div>
         </div>
@@ -155,7 +175,7 @@ export default function NewProductPage() {
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Products
+            Mahsulotlarga qaytish
           </Button>
         </div>
 
@@ -163,27 +183,27 @@ export default function NewProductPage() {
           <Card>
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle>Add New Product</CardTitle>
-                <CardDescription>Create a new product in your inventory</CardDescription>
+                <CardTitle>Yangi mahsulot qo'shish</CardTitle>
+                <CardDescription>Inventaringizga yangi mahsulot yarating</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Product Name</Label>
+                  <Label htmlFor="name">Mahsulot nomi</Label>
                   <Input
                     id="name"
                     name="name"
-                    placeholder="e.g., SSD 500GB"
+                    placeholder="Masalan, SSD 500GB"
                     value={formData.name}
                     onChange={handleChange}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">Tavsif</Label>
                   <Textarea
                     id="description"
                     name="description"
-                    placeholder="Describe the product..."
+                    placeholder="Mahsulotni tasvirlang..."
                     rows={3}
                     value={formData.description}
                     onChange={handleChange}
@@ -191,7 +211,7 @@ export default function NewProductPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="price">Price</Label>
+                    <Label htmlFor="price">Narxi</Label>
                     <Input
                       id="price"
                       name="price"
@@ -205,7 +225,7 @@ export default function NewProductPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity</Label>
+                    <Label htmlFor="quantity">Miqdori</Label>
                     <Input
                       id="quantity"
                       name="quantity"
@@ -220,17 +240,17 @@ export default function NewProductPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="category">Category</Label>
+                    <Label htmlFor="category">Kategoriya</Label>
                     <Link href="/dashboard/products/categories/new">
                       <Button type="button" variant="outline" size="sm">
                         <Plus className="mr-2 h-4 w-4" />
-                        Add New Category
+                        Yangi kategoriya qo'shish
                       </Button>
                     </Link>
                   </div>
                   <Select value={formData.category} onValueChange={(value) => handleSelectChange("category", value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
+                      <SelectValue placeholder="Kategoriyani tanlang" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
@@ -242,7 +262,7 @@ export default function NewProductPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Product Images</Label>
+                  <Label>Mahsulot rasmlari</Label>
                   <div className="border rounded-md p-4">
                     <div className="flex flex-wrap gap-2 mb-4">
                       {images.map((image, index) => (
@@ -250,7 +270,7 @@ export default function NewProductPage() {
                           <div className="w-20 h-20 rounded-md bg-muted flex items-center justify-center overflow-hidden">
                             <img
                               src={URL.createObjectURL(image)}
-                              alt={`Upload ${index + 1}`}
+                              alt={`Yuklash ${index + 1}`}
                               className="object-cover w-full h-full"
                             />
                           </div>
@@ -263,7 +283,7 @@ export default function NewProductPage() {
                           </button>
                           {index === 0 && (
                             <span className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white text-xs px-1 rounded">
-                              Main
+                              Asosiy
                             </span>
                           )}
                         </div>
@@ -275,8 +295,8 @@ export default function NewProductPage() {
                         className="cursor-pointer flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-md hover:bg-muted/50 transition-colors"
                       >
                         <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <span className="text-sm text-muted-foreground">Click to upload images</span>
-                        <span className="text-xs text-muted-foreground">First image will be the main image</span>
+                        <span className="text-sm text-muted-foreground">Rasmlarni yuklash uchun bosing</span>
+                        <span className="text-xs text-muted-foreground">Birinchi rasm asosiy rasm bo'ladi</span>
                         <input
                           id="image-upload"
                           type="file"
@@ -291,8 +311,8 @@ export default function NewProductPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating Product..." : "Create Product"}
+                <Button type="submit" className="w-full" disabled={isSubmitting || isLoading}>
+                  {isSubmitting ? "Mahsulot yaratilmoqda..." : "Mahsulot yaratish"}
                 </Button>
               </CardFooter>
             </form>

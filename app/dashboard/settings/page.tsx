@@ -1,45 +1,46 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { User, Lock, Bell, Sun, Upload, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import DashboardLayout from "@/components/dashboard-layout"
-import { useAuth } from "@/hooks/use-auth"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { User, Lock, Bell, Sun, Upload } from "lucide-react";
+import DashboardLayout from "@/components/dashboard-layout";
+import { useAuth } from "@/hooks/use-auth";
+import toast from "react-hot-toast";
+import Link from "next/link";
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [profileForm, setProfileForm] = useState({
     username: "",
     email: "",
     phone: "",
-  })
+  });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-  })
+  });
   const [notificationSettings, setNotificationSettings] = useState({
     emailNotifications: true,
     orderUpdates: true,
     systemAnnouncements: true,
     marketingEmails: false,
-  })
+  });
   const [appearanceSettings, setAppearanceSettings] = useState({
     darkMode: false,
     compactView: false,
-  })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [successMessage, setSuccessMessage] = useState("")
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize form with user data
   useEffect(() => {
@@ -48,63 +49,64 @@ export default function SettingsPage() {
         username: user.username || "",
         email: user.email || "",
         phone: user.phone || "",
-      })
+      });
     }
-  }, [user])
+  }, [user]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setProfileForm((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setProfileForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setPasswordForm((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleNotificationToggle = (setting: string) => {
     setNotificationSettings((prev) => ({
       ...prev,
       [setting]: !prev[setting as keyof typeof prev],
-    }))
-  }
+    }));
+  };
 
   const handleAppearanceToggle = (setting: string) => {
     setAppearanceSettings((prev) => ({
       ...prev,
       [setting]: !prev[setting as keyof typeof prev],
-    }))
-  }
+    }));
+  };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSuccessMessage("")
+    e.preventDefault();
+    setIsSubmitting(true);
+    const loadingToast = toast.loading("Profil yangilanmoqda...");
 
     try {
       // In a real app, this would be an API call to update the user profile
       // await updateUserProfile(profileForm);
 
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      setSuccessMessage("Profile updated successfully")
+      toast.success("Profil muvaffaqiyatli yangilandi", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to update profile:", error)
+      console.error("Profilni yangilashda xato:", error);
+      toast.error("Profilni yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", { id: loadingToast });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSuccessMessage("")
+    e.preventDefault();
+    setIsSubmitting(true);
+    const loadingToast = toast.loading("Parol o'zgartirilmoqda...");
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert("New passwords do not match")
-      setIsSubmitting(false)
-      return
+      toast.error("Yangi parollar mos kelmadi", { id: loadingToast });
+      setIsSubmitting(false);
+      return;
     }
 
     try {
@@ -112,59 +114,79 @@ export default function SettingsPage() {
       // await changePassword(passwordForm);
 
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       setPasswordForm({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
-      })
-      setSuccessMessage("Password changed successfully")
+      });
+      toast.success("Parol muvaffaqiyatli o'zgartirildi", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to change password:", error)
+      console.error("Parolni o'zgartirishda xato:", error);
+      toast.error("Parolni o'zgartirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", { id: loadingToast });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleNotificationsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSuccessMessage("")
+    e.preventDefault();
+    setIsSubmitting(true);
+    const loadingToast = toast.loading("Bildirishnoma sozlamalari yangilanmoqda...");
 
     try {
       // In a real app, this would be an API call to update notification settings
       // await updateNotificationSettings(notificationSettings);
 
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      setSuccessMessage("Notification settings updated successfully")
+      toast.success("Bildirishnoma sozlamalari muvaffaqiyatli yangilandi", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to update notification settings:", error)
+      console.error("Bildirishnoma sozlamalarini yangilashda xato:", error);
+      toast.error("Bildirishnoma sozlamalarini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleAppearanceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setSuccessMessage("")
+    e.preventDefault();
+    setIsSubmitting(true);
+    const loadingToast = toast.loading("Tashqi ko'rinish sozlamalari yangilanmoqda...");
 
     try {
       // In a real app, this would be an API call to update appearance settings
       // await updateAppearanceSettings(appearanceSettings);
 
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      setSuccessMessage("Appearance settings updated successfully")
+      toast.success("Tashqi ko'rinish sozlamalari muvaffaqiyatli yangilandi", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to update appearance settings:", error)
+      console.error("Tashqi ko'rinish sozlamalarini yangilashda xato:", error);
+      toast.error("Tashqi ko'rinish sozlamalarini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
+  };
+
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, sozlamalar yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   if (!user) {
@@ -172,49 +194,44 @@ export default function SettingsPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Loading...</h1>
-            <p className="text-muted-foreground">Please wait while we load your settings.</p>
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Sozlamalarni ko'rish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
+            </Button>
           </div>
         </div>
       </DashboardLayout>
-    )
+    );
   }
 
-  const initials = user.username ? user.username.substring(0, 2).toUpperCase() : "U"
+  const initials = user.username ? user.username.substring(0, 2).toUpperCase() : "F";
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-4 sm:p-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+          <h1 className="text-3xl font-bold tracking-tight">Sozlamalar</h1>
+          <p className="text-muted-foreground">Hisobingiz sozlamalari va afzalliklarini boshqaring</p>
         </div>
-
-        {successMessage && (
-          <Alert className="bg-green-50 border-green-200 text-green-800">
-            <AlertCircle className="h-4 w-4 text-green-600" />
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>{successMessage}</AlertDescription>
-          </Alert>
-        )}
 
         <Tabs defaultValue="profile" className="space-y-4">
           <TabsList>
             <TabsTrigger value="profile">
               <User className="mr-2 h-4 w-4" />
-              Profile
+              Profil
             </TabsTrigger>
             <TabsTrigger value="password">
               <Lock className="mr-2 h-4 w-4" />
-              Password
+              Parol
             </TabsTrigger>
             <TabsTrigger value="notifications">
               <Bell className="mr-2 h-4 w-4" />
-              Notifications
+              Bildirishnomalar
             </TabsTrigger>
             <TabsTrigger value="appearance">
               <Sun className="mr-2 h-4 w-4" />
-              Appearance
+              Tashqi ko'rinish
             </TabsTrigger>
           </TabsList>
 
@@ -222,8 +239,8 @@ export default function SettingsPage() {
             <Card>
               <form onSubmit={handleProfileSubmit}>
                 <CardHeader>
-                  <CardTitle>Profile</CardTitle>
-                  <CardDescription>Manage your personal information</CardDescription>
+                  <CardTitle>Profil</CardTitle>
+                  <CardDescription>Shaxsiy ma'lumotlaringizni boshqaring</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex flex-col items-center space-y-4">
@@ -233,7 +250,7 @@ export default function SettingsPage() {
                     </Avatar>
                     <Button variant="outline" size="sm">
                       <Upload className="mr-2 h-4 w-4" />
-                      Change Avatar
+                      Avatar o'zgartirish
                     </Button>
                   </div>
 
@@ -241,7 +258,7 @@ export default function SettingsPage() {
 
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="username">Username</Label>
+                      <Label htmlFor="username">Foydalanuvchi nomi</Label>
                       <Input
                         id="username"
                         name="username"
@@ -250,7 +267,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email">Elektron pochta</Label>
                       <Input
                         id="email"
                         name="email"
@@ -260,7 +277,7 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
+                      <Label htmlFor="phone">Telefon</Label>
                       <Input
                         id="phone"
                         name="phone"
@@ -273,7 +290,7 @@ export default function SettingsPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Save Changes"}
+                    {isSubmitting ? "Saqlanmoqda..." : "O'zgarishlarni saqlash"}
                   </Button>
                 </CardFooter>
               </form>
@@ -284,12 +301,12 @@ export default function SettingsPage() {
             <Card>
               <form onSubmit={handlePasswordSubmit}>
                 <CardHeader>
-                  <CardTitle>Password</CardTitle>
-                  <CardDescription>Change your password</CardDescription>
+                  <CardTitle>Parol</CardTitle>
+                  <CardDescription>Parolingizni o'zgartiring</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Label htmlFor="currentPassword">Joriy parol</Label>
                     <Input
                       id="currentPassword"
                       name="currentPassword"
@@ -300,7 +317,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword">New Password</Label>
+                    <Label htmlFor="newPassword">Yangi parol</Label>
                     <Input
                       id="newPassword"
                       name="newPassword"
@@ -311,7 +328,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Label htmlFor="confirmPassword">Yangi parolni tasdiqlash</Label>
                     <Input
                       id="confirmPassword"
                       name="confirmPassword"
@@ -324,7 +341,7 @@ export default function SettingsPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Changing..." : "Change Password"}
+                    {isSubmitting ? "O'zgartirilmoqda..." : "Parolni o'zgartirish"}
                   </Button>
                 </CardFooter>
               </form>
@@ -335,14 +352,14 @@ export default function SettingsPage() {
             <Card>
               <form onSubmit={handleNotificationsSubmit}>
                 <CardHeader>
-                  <CardTitle>Notifications</CardTitle>
-                  <CardDescription>Manage your notification preferences</CardDescription>
+                  <CardTitle>Bildirishnomalar</CardTitle>
+                  <CardDescription>Bildirishnoma afzalliklarini boshqaring</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="emailNotifications">Email Notifications</Label>
-                      <p className="text-sm text-muted-foreground">Receive notifications via email</p>
+                      <Label htmlFor="emailNotifications">Elektron pochta bildirishnomalari</Label>
+                      <p className="text-sm text-muted-foreground">Elektron pochta orqali bildirishnomalar olish</p>
                     </div>
                     <Switch
                       id="emailNotifications"
@@ -353,8 +370,8 @@ export default function SettingsPage() {
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="orderUpdates">Order Updates</Label>
-                      <p className="text-sm text-muted-foreground">Get notified about your order status changes</p>
+                      <Label htmlFor="orderUpdates">Buyurtma yangilanishlari</Label>
+                      <p className="text-sm text-muted-foreground">Buyurtma holati o'zgarishlari haqida xabar olish</p>
                     </div>
                     <Switch
                       id="orderUpdates"
@@ -365,8 +382,8 @@ export default function SettingsPage() {
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="systemAnnouncements">System Announcements</Label>
-                      <p className="text-sm text-muted-foreground">Receive important system announcements</p>
+                      <Label htmlFor="systemAnnouncements">Tizim e'lonlari</Label>
+                      <p className="text-sm text-muted-foreground">Muhim tizim e'lonlarini olish</p>
                     </div>
                     <Switch
                       id="systemAnnouncements"
@@ -377,8 +394,8 @@ export default function SettingsPage() {
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="marketingEmails">Marketing Emails</Label>
-                      <p className="text-sm text-muted-foreground">Receive promotional emails and offers</p>
+                      <Label htmlFor="marketingEmails">Marketing elektron pochtalari</Label>
+                      <p className="text-sm text-muted-foreground">Reklama xatlari va takliflarni olish</p>
                     </div>
                     <Switch
                       id="marketingEmails"
@@ -389,7 +406,7 @@ export default function SettingsPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Save Preferences"}
+                    {isSubmitting ? "Saqlanmoqda..." : "Afzalliklarni saqlash"}
                   </Button>
                 </CardFooter>
               </form>
@@ -400,14 +417,14 @@ export default function SettingsPage() {
             <Card>
               <form onSubmit={handleAppearanceSubmit}>
                 <CardHeader>
-                  <CardTitle>Appearance</CardTitle>
-                  <CardDescription>Customize your interface preferences</CardDescription>
+                  <CardTitle>Tashqi ko'rinish</CardTitle>
+                  <CardDescription>Interfeys afzalliklarini sozlang</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="darkMode">Dark Mode</Label>
-                      <p className="text-sm text-muted-foreground">Use dark theme for the interface</p>
+                      <Label htmlFor="darkMode">Qorong'i rejim</Label>
+                      <p className="text-sm text-muted-foreground">Interfeys uchun qorong'i mavzudan foydalaning</p>
                     </div>
                     <Switch
                       id="darkMode"
@@ -418,8 +435,8 @@ export default function SettingsPage() {
                   <Separator />
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label htmlFor="compactView">Compact View</Label>
-                      <p className="text-sm text-muted-foreground">Use compact layout for tables and lists</p>
+                      <Label htmlFor="compactView">Ixcham ko'rinish</Label>
+                      <p className="text-sm text-muted-foreground">Jadval va ro'yxatlar uchun ixcham tartibdan foydalaning</p>
                     </div>
                     <Switch
                       id="compactView"
@@ -430,7 +447,7 @@ export default function SettingsPage() {
                 </CardContent>
                 <CardFooter>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saving..." : "Save Preferences"}
+                    {isSubmitting ? "Saqlanmoqda..." : "Afzalliklarni saqlash"}
                   </Button>
                 </CardFooter>
               </form>
@@ -439,5 +456,5 @@ export default function SettingsPage() {
         </Tabs>
       </div>
     </DashboardLayout>
-  )
+  );
 }

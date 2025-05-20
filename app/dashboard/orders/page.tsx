@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Filter, ArrowUpDown, Calendar, User, Clock } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchOrders, fetchMyOrders } from "@/lib/api";
@@ -29,10 +29,9 @@ interface Order {
 }
 
 export default function OrdersPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,21 +39,21 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
 
-  const isManagerOrAdmin = user?.role === "manager" || user?.role === "admin" ;
+  const isManagerOrAdmin = user?.role === "manager" || user?.role === "admin";
   const isClient = !isManagerOrAdmin;
 
   const loadOrders = async () => {
     setIsLoading(true);
+    const loadingToast = toast.loading("Buyurtmalar yuklanmoqda...");
     try {
       const data = isClient ? await fetchMyOrders() : await fetchOrders();
       setOrders(data);
       setFilteredOrders(data);
+      toast.success("Buyurtmalar muvaffaqiyatli yuklandi!", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to load orders:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load orders. Please try again.",
+      console.error("Buyurtmalarni yuklashda xato:", error);
+      toast.error("Buyurtmalarni yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     } finally {
       setIsLoading(false);
@@ -62,10 +61,9 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    if (user) {
-      loadOrders();
-    }
-  }, [user]);
+    if (authLoading || !user) return;
+    loadOrders();
+  }, [user, authLoading]);
 
   useEffect(() => {
     const shouldRefresh = searchParams.get("refresh") === "true";
@@ -98,13 +96,13 @@ export default function OrdersPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "client_approved":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Client Approved</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Mijoz tomonidan tasdiqlangan</Badge>;
       case "in_process":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">In Process</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Jarayonda</Badge>;
       case "completed":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Yakunlangan</Badge>;
       case "rejected":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Rad etilgan</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -118,23 +116,36 @@ export default function OrdersPage() {
     const end = new Date(start.getTime() + order.estimated_completion_time * 60 * 60 * 1000);
     const now = new Date();
     if (now > end) {
-      return "Overdue";
+      return "Muddat o'tgan";
     }
     const diff = end.getTime() - now.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m remaining`;
+    return `${hours} soat ${minutes} daqiqa qoldi`;
   };
+
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, buyurtmalar yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!user) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">Please log in to view orders.</p>
-            <Button onClick={() => router.push("/login")}>
-              Go to Login
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Buyurtmalarni ko'rish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
             </Button>
           </div>
         </div>
@@ -147,8 +158,8 @@ export default function OrdersPage() {
       <div className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-            <p className="text-muted-foreground">Browse and manage service orders</p>
+            <h1 className="text-3xl font-bold tracking-tight">Buyurtmalar</h1>
+            <p className="text-muted-foreground">Xizmat buyurtmalarini ko'rib chiqing va boshqaring</p>
           </div>
         </div>
 
@@ -156,7 +167,7 @@ export default function OrdersPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search orders..."
+              placeholder="Buyurtmalarni qidirish..."
               className="pl-10 rounded-lg border border-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -166,24 +177,24 @@ export default function OrdersPage() {
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[160px] rounded-lg">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Holati" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="client_approved">Client Approved</SelectItem>
-                <SelectItem value="in_process">In Process</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="all">Barcha holatlar</SelectItem>
+                <SelectItem value="client_approved">Mijoz tomonidan tasdiqlangan</SelectItem>
+                <SelectItem value="in_process">Jarayonda</SelectItem>
+                <SelectItem value="completed">Yakunlangan</SelectItem>
+                <SelectItem value="rejected">Rad etilgan</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortOrder} onValueChange={setSortOrder}>
               <SelectTrigger className="w-[140px] rounded-lg">
                 <ArrowUpDown className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Sort" />
+                <SelectValue placeholder="Saralash" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="newest">Avval yangi</SelectItem>
+                <SelectItem value="oldest">Avval eski</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -191,7 +202,7 @@ export default function OrdersPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>All Orders</CardTitle>
+            <CardTitle>Barcha buyurtmalar</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -207,7 +218,7 @@ export default function OrdersPage() {
               </div>
             ) : filteredOrders.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
-                No orders found.
+                Hech qanday buyurtma topilmadi.
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -221,26 +232,26 @@ export default function OrdersPage() {
                       <div className="text-sm text-muted-foreground mb-2">
                         <div className="flex items-center">
                           <User className="h-3.5 w-3.5 mr-1" />
-                          {order.client?.username || order.client_username || 'Unknown Client'}
+                          {order.client?.username || order.client_username || 'Noma\'lum mijoz'}
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground mb-3">
                         <div className="flex items-center">
                           <Calendar className="h-3.5 w-3.5 mr-1" />
-                          {new Date(order.created_at).toLocaleDateString()}
+                          {new Date(order.created_at).toLocaleDateString("uz-UZ")}
                         </div>
                       </div>
                       {isClient && order.status === "in_process" && (
                         <div className="text-sm text-muted-foreground mb-3">
                           <div className="flex items-center">
                             <Clock className="h-3.5 w-3.5 mr-1" />
-                            {getTimeRemaining(order) || "Calculating..."}
+                            {getTimeRemaining(order) || "Hisoblanmoqda..."}
                           </div>
                         </div>
                       )}
                       <Link href={`/dashboard/orders/${order.id}`}>
                         <Button variant="outline" size="sm" className="w-full rounded-lg">
-                          View Details
+                          Tafsilotlarni ko'rish
                         </Button>
                       </Link>
                     </div>

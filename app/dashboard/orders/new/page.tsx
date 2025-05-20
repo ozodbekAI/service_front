@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Upload, X } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { createOrder, uploadOrderImages } from "@/lib/api";
+import Link from "next/link";
 
 interface OrderFormData {
   title: string;
@@ -20,8 +21,7 @@ interface OrderFormData {
 
 export default function NewOrderPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [formData, setFormData] = useState<OrderFormData>({
     title: "",
     description: "",
@@ -54,9 +54,10 @@ export default function NewOrderPage() {
     setIsSubmitting(true);
     setErrors(null);
 
+    const loadingToast = toast.loading("Buyurtma yaratilmoqda...");
     try {
       if (!formData.title || !formData.description) {
-        throw new Error("Please fill in all required fields");
+        throw new Error("Iltimos, barcha majburiy maydonlarni to'ldiring");
       }
 
       const orderData = {
@@ -74,33 +75,63 @@ export default function NewOrderPage() {
         await uploadOrderImages(formDataImages);
       }
 
-      toast({
-        title: "Success",
-        description: "Order created successfully!",
-      });
+      toast.success("Buyurtma muvaffaqiyatli yaratildi!", { id: loadingToast });
       router.push(`/dashboard/orders?refresh=true`);
     } catch (error: any) {
-      console.error("Failed to create order:", error);
+      console.error("Buyurtma yaratishda xato:", error);
       if (error.response && error.response.data) {
         setErrors(error.response.data);
+        toast.error("Buyurtma yaratishda xato yuz berdi. Maydonlarni tekshiring.", { id: loadingToast });
       } else {
-        setErrors({ general: [error.message || "Failed to create order. Please try again."] });
+        setErrors({ general: [error.message || "Buyurtma yaratishda xato yuz berdi. Iltimos, qayta urinib ko'ring."] });
+        toast.error(error.message || "Buyurtma yaratishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
+        });
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!user || (user.role !== "client" && user.role !== "manager")) {
+  if (authLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">Only clients and managers can create orders.</p>
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, sahifa yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Buyurtma yaratish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (user.role !== "client" && user.role !== "manager") {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Faqat mijozlar va menejerlar buyurtma yarata oladi.</p>
             <Button onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
+              Orqaga qaytish
             </Button>
           </div>
         </div>
@@ -114,7 +145,7 @@ export default function NewOrderPage() {
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Orders
+            Buyurtmalarga qaytish
           </Button>
         </div>
 
@@ -122,19 +153,19 @@ export default function NewOrderPage() {
           <Card className="shadow-lg">
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle>Create New Order</CardTitle>
-                <p className="text-muted-foreground">Submit a new service order</p>
+                <CardTitle>Yangi buyurtma yaratish</CardTitle>
+                <p className="text-muted-foreground">Yangi xizmat buyurtmasini yuboring</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 {errors?.general && (
                   <p className="text-red-500 mb-4">{errors.general.join(", ")}</p>
                 )}
                 <div className="space-y-2">
-                  <Label htmlFor="title">Order Title</Label>
+                  <Label htmlFor="title">Buyurtma sarlavhasi</Label>
                   <Input
                     id="title"
                     name="title"
-                    placeholder="e.g., Laptop Repair Request"
+                    placeholder="Masalan, Noutbukni ta'mirlash so'rovi"
                     value={formData.title}
                     onChange={handleChange}
                     required
@@ -145,11 +176,11 @@ export default function NewOrderPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">Tavsif</Label>
                   <Textarea
                     id="description"
                     name="description"
-                    placeholder="Describe your order in detail..."
+                    placeholder="Buyurtmangizni batafsil tasvirlang..."
                     rows={5}
                     value={formData.description}
                     onChange={handleChange}
@@ -161,7 +192,7 @@ export default function NewOrderPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Images (Optional)</Label>
+                  <Label>Rasmlar (Ixtiyoriy)</Label>
                   <div className="border rounded-lg p-4">
                     <div className="flex flex-wrap gap-2 mb-4">
                       {images.map((image, index) => (
@@ -169,7 +200,7 @@ export default function NewOrderPage() {
                           <div className="w-20 h-20 rounded-md bg-muted flex items-center justify-center overflow-hidden">
                             <img
                               src={URL.createObjectURL(image)}
-                              alt={`Upload ${index + 1}`}
+                              alt={`Yuklangan rasm ${index + 1}`}
                               className="object-cover w-full h-full"
                             />
                           </div>
@@ -189,7 +220,7 @@ export default function NewOrderPage() {
                         className="cursor-pointer flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-md hover:bg-muted/50 transition-colors"
                       >
                         <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                        <span className="text-sm text-muted-foreground">Click to upload images</span>
+                        <span className="text-sm text-muted-foreground">Rasmlarni yuklash uchun bosing</span>
                         <input
                           id="image-upload"
                           type="file"
@@ -209,7 +240,7 @@ export default function NewOrderPage() {
                   className="w-full bg-primary hover:bg-primary/90 rounded-lg"
                   disabled={isSubmitting}
                 >
-                  {isSubmitting ? "Creating Order..." : "Create Order"}
+                  {isSubmitting ? "Buyurtma yaratilmoqda..." : "Buyurtma yaratish"}
                 </Button>
               </CardFooter>
             </form>

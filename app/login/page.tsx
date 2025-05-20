@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -11,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Monitor, AlertCircle } from "lucide-react"
+import { Toaster, toast } from "react-hot-toast"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginPage() {
@@ -28,9 +28,11 @@ export default function LoginPage() {
 
     try {
       await login(email, password)
+      toast.success("Tizimga muvaffaqiyatli kirdingiz!")
       router.push("/dashboard")
     } catch (err: any) {
-      setError(err.message || "Failed to login. Please check your credentials.")
+      setError(err.message || "Tizimga kirishda xato. Iltimos, ma'lumotlaringizni tekshiring.")
+      toast.error("Tizimga kirishda xato yuz berdi!")
     } finally {
       setIsLoading(false)
     }
@@ -42,14 +44,14 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center space-x-2">
             <Monitor className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">CompService</span>
+            <span className="text-xl font-bold">KompXizmat</span>
           </Link>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">Login</CardTitle>
-            <CardDescription>Enter your credentials to access your account</CardDescription>
+            <CardTitle className="text-2xl">Tizimga kirish</CardTitle>
+            <CardDescription>Hisobingizga kirish uchun ma'lumotlaringizni kiriting</CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
@@ -60,11 +62,11 @@ export default function LoginPage() {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Elektron pochta</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="sizning@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -72,7 +74,7 @@ export default function LoginPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Parol</Label>
                 </div>
                 <Input
                   id="password"
@@ -85,17 +87,18 @@ export default function LoginPage() {
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+                {isLoading ? "Kirilmoqda..." : "Kirish"}
               </Button>
               <div className="text-center text-sm">
-                Don&apos;t have an account?{" "}
+                Hisobingiz yo‘qmi?{" "}
                 <Link href="/register" className="text-primary hover:underline">
-                  Register
+                  Ro‘yxatdan o‘tish
                 </Link>
               </div>
             </CardFooter>
           </form>
         </Card>
+        <Toaster />
       </div>
     </div>
   )

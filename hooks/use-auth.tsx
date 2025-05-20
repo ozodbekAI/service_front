@@ -7,7 +7,7 @@ interface User {
   username: string
   email: string
   phone: string
-  role: "user" | "manager" | "admin"
+  role: "client" | "manager" | "admin"
 }
 
 interface AuthContextType {

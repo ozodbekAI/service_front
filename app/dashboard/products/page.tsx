@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Filter, ArrowUpDown, Plus, Trash2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchProducts, deleteProduct } from "@/lib/api";
@@ -29,10 +29,9 @@ interface Product {
 }
 
 export default function ProductsPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,16 +43,16 @@ export default function ProductsPage() {
 
   const loadProducts = async () => {
     setIsLoading(true);
+    const loadingToast = toast.loading("Mahsulotlar yuklanmoqda...");
     try {
       const data = await fetchProducts();
       setProducts(data);
       setFilteredProducts(data);
+      toast.success("Mahsulotlar muvaffaqiyatli yuklandi!", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to load products:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load products. Please try again.",
+      console.error("Mahsulotlarni yuklashda xato:", error);
+      toast.error("Mahsulotlarni yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     } finally {
       setIsLoading(false);
@@ -61,10 +60,9 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    if (user) {
-      loadProducts();
-    }
-  }, [user]);
+    if (authLoading || !user) return;
+    loadProducts();
+  }, [user, authLoading]);
 
   useEffect(() => {
     const shouldRefresh = searchParams.get("refresh") === "true" || searchParams.get("created") === "true";
@@ -107,20 +105,16 @@ export default function ProductsPage() {
   }, [products, stockFilter, searchQuery, sortOrder]);
 
   const handleDeleteProduct = async (id: number) => {
-    if (confirm("Are you sure you want to delete this product?")) {
+    if (confirm("Haqiqatan ham ushbu mahsulotni o'chirmoqchimisiz?")) {
+      const loadingToast = toast.loading("Mahsulot o'chirilmoqda...");
       try {
         await deleteProduct(id);
         setProducts((prev) => prev.filter((product) => product.id !== id));
-        toast({
-          title: "Success",
-          description: "Product deleted successfully.",
-        });
+        toast.success("Mahsulot muvaffaqiyatli o'chirildi.", { id: loadingToast });
       } catch (error) {
-        console.error("Failed to delete product:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to delete product. Please try again.",
+        console.error("Mahsulotni o'chirishda xato:", error);
+        toast.error("Mahsulotni o'chirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       }
     }
@@ -128,22 +122,35 @@ export default function ProductsPage() {
 
   const getStockBadge = (quantity: number) => {
     if (quantity === 0) {
-      return <Badge className="bg-red-100 text-red-800 border-red-200">Out of Stock</Badge>;
+      return <Badge className="bg-red-100 text-red-800 border-red-200">Zaxira yo'q</Badge>;
     } else if (quantity <= 10) {
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Low Stock</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Kam zaxira</Badge>;
     }
-    return <Badge className="bg-green-100 text-green-800 border-green-200">In Stock</Badge>;
+    return <Badge className="bg-green-100 text-green-800 border-green-200">Zaxirada</Badge>;
   };
+
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, mahsulotlar yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!user) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">Please log in to view products.</p>
-            <Button onClick={() => router.push("/login")}>
-              Go to Login
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Mahsulotlarni ko'rish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
             </Button>
           </div>
         </div>
@@ -156,21 +163,21 @@ export default function ProductsPage() {
       <div className="space-y-6 p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-            <p className="text-muted-foreground">Browse and manage products</p>
+            <h1 className="text-3xl font-bold tracking-tight">Mahsulotlar</h1>
+            <p className="text-muted-foreground">Mahsulotlarni ko'rib chiqing va boshqaring</p>
           </div>
           {isManagerOrAdmin && (
             <div className="flex gap-2">
               <Link href="/dashboard/products/new">
                 <Button className="bg-primary hover:bg-primary/90 rounded-lg">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Product
+                  Mahsulot qo'shish
                 </Button>
               </Link>
               <Link href="/dashboard/products/categories/new">
                 <Button variant="outline" className="rounded-lg">
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Category
+                  Kategoriya qo'shish
                 </Button>
               </Link>
             </div>
@@ -181,7 +188,7 @@ export default function ProductsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              placeholder="Mahsulotlarni qidirish..."
               className="pl-10 rounded-lg border border-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -191,25 +198,25 @@ export default function ProductsPage() {
             <Select value={stockFilter} onValueChange={setStockFilter}>
               <SelectTrigger className="w-[160px] rounded-lg">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Stock" />
+                <SelectValue placeholder="Zaxira" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Stock</SelectItem>
-                <SelectItem value="in_stock">In Stock</SelectItem>
-                <SelectItem value="low">Low Stock (≤10)</SelectItem>
-                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                <SelectItem value="all">Barcha zaxira</SelectItem>
+                <SelectItem value="in_stock">Zaxirada</SelectItem>
+                <SelectItem value="low">Kam zaxira (≤10)</SelectItem>
+                <SelectItem value="out_of_stock">Zaxira yo'q</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortOrder} onValueChange={setSortOrder}>
               <SelectTrigger className="w-[160px] rounded-lg">
                 <ArrowUpDown className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Sort" />
+                <SelectValue placeholder="Saralash" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="name_asc">Name (A-Z)</SelectItem>
-                <SelectItem value="name_desc">Name (Z-A)</SelectItem>
-                <SelectItem value="price_asc">Price (Low to High)</SelectItem>
-                <SelectItem value="price_desc">Price (High to Low)</SelectItem>
+                <SelectItem value="name_asc">Nomi (A-Z)</SelectItem>
+                <SelectItem value="name_desc">Nomi (Z-A)</SelectItem>
+                <SelectItem value="price_asc">Narxi (Pastdan yuqoriga)</SelectItem>
+                <SelectItem value="price_desc">Narxi (Yuqoridan pastga)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -217,7 +224,7 @@ export default function ProductsPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>All Products</CardTitle>
+            <CardTitle>Barcha mahsulotlar</CardTitle>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -233,10 +240,10 @@ export default function ProductsPage() {
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
-                No products found.{" "}
+                Hech qanday mahsulot topilmadi.{" "}
                 {isManagerOrAdmin && (
                   <Link href="/dashboard/products/new" className="text-primary hover:underline">
-                    Add a new product
+                    Yangi mahsulot qo'shing
                   </Link>
                 )}
               </div>
@@ -251,14 +258,15 @@ export default function ProductsPage() {
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{product.description}</p>
                       <div className="text-sm mb-2">
-                        <span className="font-medium">Price:</span> {product.price} сум
+                        <span className="font-medium">Narxi:</span>{" "}
+                        {product.price.toLocaleString("uz-UZ")} so‘m
                       </div>
                       <div className="text-sm mb-2">
-                        <span className="font-medium">Stock:</span> {product.quantity}
+                        <span className="font-medium">Zaxira:</span> {product.quantity}
                       </div>
                       <div className="text-sm mb-3">
-                        <span className="font-medium">Category:</span>{" "}
-                        {product.category_details ? product.category_details.name : "No Category"}
+                        <span className="font-medium">Kategoriya:</span>{" "}
+                        {product.category_details ? product.category_details.name : "Kategoriyasiz"}
                       </div>
                       {product.images && product.images.length > 0 && (
                         <div className="w-full h-32 overflow-hidden rounded-md mb-3">
@@ -272,7 +280,7 @@ export default function ProductsPage() {
                       <div className="flex gap-2">
                         <Link href={`/dashboard/products/${product.id}`} className="flex-1">
                           <Button variant="outline" size="sm" className="w-full rounded-lg">
-                            View Details
+                            Tafsilotlarni ko'rish
                           </Button>
                         </Link>
                         {isManagerOrAdmin && (

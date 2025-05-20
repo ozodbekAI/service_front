@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   BarChart,
   Bar,
@@ -13,400 +13,554 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
-} from "recharts"
-import { ClipboardList, Users, Package, DollarSign, TrendingUp, Calendar } from "lucide-react"
-import DashboardLayout from "@/components/dashboard-layout"
-import { useAuth } from "@/hooks/use-auth"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+  ResponsiveContainer,
+} from "recharts";
+import { ClipboardList, Users, Package, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import DashboardLayout from "@/components/dashboard-layout";
+import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "react-hot-toast";
+import {
+  fetchDashboardStats,
+  fetchWeeklyStats,
+  fetchOrders,
+  fetchProductCategories,
+  fetchTopSellingProducts,
+  fetchUserManagementStats,
+  fetchUserGrowth,
+  fetchOrderStatusDistribution,
+} from "@/lib/api";
 
-// Mock data for charts
-const weeklyOrdersData = [
-  { name: "Mon", orders: 4, completed: 3, rejected: 1 },
-  { name: "Tue", orders: 6, completed: 4, rejected: 0 },
-  { name: "Wed", orders: 8, completed: 5, rejected: 1 },
-  { name: "Thu", orders: 10, completed: 7, rejected: 2 },
-  { name: "Fri", orders: 12, completed: 9, rejected: 1 },
-  { name: "Sat", orders: 8, completed: 6, rejected: 0 },
-  { name: "Sun", orders: 5, completed: 4, rejected: 0 },
-]
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
-const monthlyOrdersData = [
-  { name: "Jan", orders: 30, completed: 25, rejected: 5 },
-  { name: "Feb", orders: 40, completed: 32, rejected: 8 },
-  { name: "Mar", orders: 45, completed: 38, rejected: 7 },
-  { name: "Apr", orders: 55, completed: 45, rejected: 10 },
-  { name: "May", orders: 60, completed: 50, rejected: 10 },
-  { name: "Jun", orders: 70, completed: 60, rejected: 10 },
-  { name: "Jul", orders: 75, completed: 65, rejected: 10 },
-  { name: "Aug", orders: 80, completed: 70, rejected: 10 },
-  { name: "Sep", orders: 85, completed: 75, rejected: 10 },
-  { name: "Oct", orders: 90, completed: 80, rejected: 10 },
-  { name: "Nov", orders: 95, completed: 85, rejected: 10 },
-  { name: "Dec", orders: 100, completed: 90, rejected: 10 },
-]
+export default function StatistikalarSahifasi() {
+  const { user } = useAuth();
+  const [timeRange, setTimeRange] = useState("haftalik");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dashboardStats, setDashboardStats] = useState({
+    jami_buyurtmalar: 0,
+    jami_mijozlar: 0,
+    bajarilgan_buyurtmalar: 0,
+    taxminiy_narx__jami: 0,
+  });
+  const [weeklyStats, setWeeklyStats] = useState([]);
+  const [monthlyStats, setMonthlyStats] = useState<
+    { name: string; buyurtmalar: number; bajarilgan: number; rad_etilgan: number }[]
+  >([]);
+  const [productCategories, setProductCategories] = useState([]);
+  const [topSellingProducts, setTopSellingProducts] = useState([]);
+  const [userManagementStats, setUserManagementStats] = useState({
+    jami_foydalanuvchilar: 0,
+    mijozlar: 0,
+    menejerlar: 0,
+    adminlar: 0,
+  });
+  const [userGrowth, setUserGrowth] = useState([]);
+  const [orderStatusDistribution, setOrderStatusDistribution] = useState([]);
 
-const productCategoryData = [
-  { name: "Storage", value: 35 },
-  { name: "Memory", value: 25 },
-  { name: "Processors", value: 20 },
-  { name: "Peripherals", value: 15 },
-  { name: "Other", value: 5 },
-]
+  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager" || isAdmin;
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
+  useEffect(() => {
+    if (!isManager) return;
 
-export default function StatisticsPage() {
-  const { user } = useAuth()
-  const [timeRange, setTimeRange] = useState("weekly")
-  const [isLoading, setIsLoading] = useState(false)
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Dashboard statistikasini olish
+        const dashboardData = await fetchDashboardStats();
+        setDashboardStats({
+          jami_buyurtmalar: dashboardData.total_orders,
+          jami_mijozlar: dashboardData.total_clients,
+          bajarilgan_buyurtmalar: dashboardData.completed_orders,
+          taxminiy_narx__jami: dashboardData.estimated_price__sum,
+        });
+        toast.success("Dashboard statistikasi muvaffaqiyatli yuklandi!");
 
-  // Only admin and manager can access this page
-  const isAdmin = user?.role === "admin"
-  const isManager = user?.role === "manager" || isAdmin
+        // Haftalik statistikani olish
+        try {
+          const weeklyData = await fetchWeeklyStats();
+          setWeeklyStats(
+            weeklyData.map((item: any) => ({
+              name: new Date(item.date).toLocaleDateString("uz-UZ", { weekday: "short" }),
+              buyurtmalar: item.total_orders || 0,
+              bajarilgan: item.completed_orders || 0,
+              rad_etilgan: item.rejected_orders || 0,
+            }))
+          );
+        } catch (err) {
+          console.error("Haftalik statistika xatosi:", err);
+          setError("Haftalik statistikani yuklashda xato yuz berdi.");
+          toast.error("Haftalik statistikani yuklashda xato!");
+        }
+
+        // Oylik statistikani olish
+        try {
+          const ordersData = await fetchOrders();
+          const monthlyData = Array.from({ length: 12 }, (_, i) => {
+            const date = new Date();
+            date.setMonth(date.getMonth() - 11 + i);
+            const monthName = date.toLocaleDateString("uz-UZ", { month: "short" });
+            const monthOrders = ordersData.filter(
+              (order: any) =>
+                new Date(order.created_at).getMonth() === date.getMonth() &&
+                new Date(order.created_at).getFullYear() === date.getFullYear()
+            );
+            return {
+              name: monthName,
+              buyurtmalar: monthOrders.length,
+              bajarilgan: monthOrders.filter((order: any) => order.status === "bajarilgan").length,
+              rad_etilgan: monthOrders.filter((order: any) => order.status === "rad_etilgan").length,
+            };
+          });
+          setMonthlyStats(monthlyData);
+        } catch (err) {
+          console.error("Oylik statistika xatosi:", err);
+          setError("Oylik statistikani yuklashda xato yuz berdi.");
+          toast.error("Oylik statistikani yuklashda xato!");
+        }
+
+        // Mahsulot kategoriyalarini olish
+        try {
+          const categoriesData = await fetchProductCategories();
+          setProductCategories(
+            categoriesData.map((category: any) => ({
+              name: category.name,
+              value: category.products_count || 0,
+            }))
+          );
+        } catch (err) {
+          console.error("Mahsulot kategoriyalari xatosi:", err);
+          setError("Mahsulot kategoriyalarini yuklashda xato yuz berdi.");
+          toast.error("Mahsulot kategoriyalarini yuklashda xato!");
+        }
+
+        // Eng ko‘p sotilgan mahsulotlarni olish
+        try {
+          const topProductsData = await fetchTopSellingProducts();
+          setTopSellingProducts(topProductsData);
+        } catch (err) {
+          console.error("Eng ko‘p sotilgan mahsulotlar xatosi:", err);
+          setError("Eng ko‘p sotilgan mahsulotlarni yuklashda xato yuz berdi.");
+          toast.error("Eng ko‘p sotilgan mahsulotlarni yuklashda xato!");
+        }
+
+        // Foydalanuvchi boshqaruvi statistikasini olish
+        try {
+          const userStats = await fetchUserManagementStats();
+          setUserManagementStats({
+            jami_foydalanuvchilar: userStats.total_users,
+            mijozlar: userStats.clients,
+            menejerlar: userStats.managers,
+            adminlar: userStats.admins,
+          });
+        } catch (err) {
+          console.error("Foydalanuvchi boshqaruvi statistikasi xatosi:", err);
+          setError("Foydalanuvchi boshqaruvi statistikasini yuklashda xato yuz berdi.");
+          toast.error("Foydalanuvchi boshqaruvi statistikasini yuklashda xato!");
+        }
+
+        // Foydalanuvchi o‘sishi statistikasini olish
+        try {
+          const userGrowthData = await fetchUserGrowth();
+          setUserGrowth(userGrowthData);
+        } catch (err) {
+          console.error("Foydalanuvchi o‘sishi xatosi:", err);
+          setError("Foydalanuvchi o‘sishi ma’lumotlarini yuklashda xato yuz berdi.");
+          toast.error("Foydalanuvchi o‘sishi ma’lumotlarini yuklashda xato!");
+        }
+
+        // Buyurtma holati taqsimotini olish
+        try {
+          const statusData = await fetchOrderStatusDistribution();
+          setOrderStatusDistribution(statusData);
+        } catch (err) {
+          console.error("Buyurtma holati taqsimoti xatosi:", err);
+          setError("Buyurtma holati taqsimotini yuklashda xato yuz berdi.");
+          toast.error("Buyurtma holati taqsimotini yuklashda xato!");
+        }
+      } catch (error) {
+        console.error("Umumiy statistikani yuklash xatosi:", error);
+        setError("Statistikani yuklashda xato yuz berdi.");
+        toast.error("Statistikani yuklashda umumiy xato!");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isManager]);
 
   if (!isManager) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">You don&apos;t have permission to view this page.</p>
+            <h1 className="text-2xl font-bold mb-2">Kirish taqiqlangan</h1>
+            <p className="text-muted-foreground mb-4">Sizda ushbu sahifani ko‘rish uchun ruxsat yo‘q.</p>
             <Link href="/dashboard">
-              <Button>Return to Dashboard</Button>
+              <Button>Boshqaruv paneliga qaytish</Button>
             </Link>
           </div>
         </div>
+        <Toaster />
       </DashboardLayout>
-    )
+    );
   }
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Statistics</h1>
-          <p className="text-muted-foreground">Analyze system performance and trends</p>
+          <h1 className="text-3xl font-bold tracking-tight">Statistika</h1>
+          <p className="text-muted-foreground">Tizim samaradorligi va tendensiyalarni tahlil qilish</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <ClipboardList className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">245</div>
-              <p className="text-xs text-muted-foreground">+12% from last month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">48</div>
-              <p className="text-xs text-muted-foreground">+4 new clients this month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Products Sold</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">132</div>
-              <p className="text-xs text-muted-foreground">+18% from last month</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">$12,450</div>
-              <p className="text-xs text-muted-foreground">+8% from last month</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="orders" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="orders">Orders</TabsTrigger>
-            <TabsTrigger value="products">Products</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="orders" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <CardTitle>Order Statistics</CardTitle>
-                    <CardDescription>Overview of order trends</CardDescription>
-                  </div>
-                  <div className="flex space-x-2 mt-2 sm:mt-0">
-                    <Button
-                      variant={timeRange === "weekly" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setTimeRange("weekly")}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Weekly
-                    </Button>
-                    <Button
-                      variant={timeRange === "monthly" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setTimeRange("monthly")}
-                    >
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Monthly
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={timeRange === "weekly" ? weeklyOrdersData : monthlyOrdersData}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="orders" fill="#3b82f6" name="Total Orders" />
-                      <Bar dataKey="completed" fill="#10b981" name="Completed" />
-                      <Bar dataKey="rejected" fill="#ef4444" name="Rejected" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-4 md:grid-cols-2">
+        {isLoading ? (
+          <div>Yuklanmoqda...</div>
+        ) : error ? (
+          <div className="text-red-500 text-center">{error}</div>
+        ) : (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Order Completion Rate</CardTitle>
-                  <CardDescription>Percentage of orders completed successfully</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Jami buyurtmalar</CardTitle>
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={timeRange === "weekly" ? weeklyOrdersData : monthlyOrdersData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="completed"
-                          stroke="#10b981"
-                          activeDot={{ r: 8 }}
-                          name="Completed Orders"
-                        />
-                        <Line type="monotone" dataKey="orders" stroke="#3b82f6" name="Total Orders" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <div className="text-2xl font-bold">{dashboardStats.jami_buyurtmalar}</div>
+                  <p className="text-xs text-muted-foreground">O‘tgan oydan +12%</p>
                 </CardContent>
               </Card>
-
               <Card>
-                <CardHeader>
-                  <CardTitle>Order Status Distribution</CardTitle>
-                  <CardDescription>Current status of all orders</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Jami mijozlar</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px] flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: "Completed", value: 65 },
-                            { name: "In Progress", value: 20 },
-                            { name: "Pending", value: 10 },
-                            { name: "Rejected", value: 5 },
-                          ]}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {[
-                            { name: "Completed", value: 65, color: "#10b981" },
-                            { name: "In Progress", value: 20, color: "#3b82f6" },
-                            { name: "Pending", value: 10, color: "#f59e0b" },
-                            { name: "Rejected", value: 5, color: "#ef4444" },
-                          ].map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <div className="text-2xl font-bold">{dashboardStats.jami_mijozlar}</div>
+                  <p className="text-xs text-muted-foreground">Bu oyda +4 yangi mijoz</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Sotilgan mahsulotlar</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{dashboardStats.bajarilgan_buyurtmalar}</div>
+                  <p className="text-xs text-muted-foreground">O‘tgan oydan +18%</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Daromad</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${(dashboardStats.taxminiy_narx__jami || 0).toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">O‘tgan oydan +8%</p>
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
 
-          <TabsContent value="products" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Product Category Distribution</CardTitle>
-                <CardDescription>Breakdown of products by category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={productCategoryData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {productCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+            <Tabs defaultValue="buyurtmalar" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="buyurtmalar">Buyurtmalar</TabsTrigger>
+                <TabsTrigger value="mahsulotlar">Mahsulotlar</TabsTrigger>
+                <TabsTrigger value="foydalanuvchilar">Foydalanuvchilar</TabsTrigger>
+              </TabsList>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Selling Products</CardTitle>
-                <CardDescription>Most popular products by sales volume</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        { name: "SSD 500GB", sales: 42 },
-                        { name: "RAM 16GB", sales: 38 },
-                        { name: "Intel i5", sales: 30 },
-                        { name: "SSD 1TB", sales: 25 },
-                        { name: "RAM 32GB", sales: 22 },
-                      ]}
-                      layout="vertical"
-                      margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="sales" fill="#3b82f6" name="Units Sold" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              <TabsContent value="buyurtmalar" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <CardTitle>Buyurtmalar statistikasi</CardTitle>
+                        <CardDescription>Buyurtmalar tendensiyalari haqida umumiy ma’lumot</CardDescription>
+                      </div>
+                      <div className="flex space-x-2 mt-2 sm:mt-0">
+                        <Button
+                          variant={timeRange === "haftalik" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTimeRange("haftalik")}
+                        >
+                          <Calendar className="mr-2 h-4 w-4" />
+                          Haftalik
+                        </Button>
+                        <Button
+                          variant={timeRange === "oylik" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setTimeRange("oylik")}
+                        >
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Oylik
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {(timeRange === "haftalik" ? weeklyStats : monthlyStats).length > 0 ? (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={timeRange === "haftalik" ? weeklyStats : monthlyStats}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="buyurtmalar" fill="#3b82f6" name="Jami buyurtmalar" />
+                            <Bar dataKey="bajarilgan" fill="#10b981" name="Bajarilgan" />
+                            <Bar dataKey="rad_etilgan" fill="#ef4444" name="Rad etilgan" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground">Buyurtmalar ma’lumotlari mavjud emas.</div>
+                    )}
+                  </CardContent>
+                </Card>
 
-          <TabsContent value="users" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Growth</CardTitle>
-                <CardDescription>New user registrations over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={[
-                        { month: "Jan", users: 10 },
-                        { month: "Feb", users: 15 },
-                        { month: "Mar", users: 18 },
-                        { month: "Apr", users: 25 },
-                        { month: "May", users: 30 },
-                        { month: "Jun", users: 35 },
-                        { month: "Jul", users: 40 },
-                        { month: "Aug", users: 42 },
-                        { month: "Sep", users: 45 },
-                        { month: "Oct", users: 48 },
-                        { month: "Nov", users: 50 },
-                        { month: "Dec", users: 55 },
-                      ]}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="users" stroke="#3b82f6" activeDot={{ r: 8 }} name="Total Users" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Buyurtma bajarilish darajasi</CardTitle>
+                      <CardDescription>Buyurtmalarning muvaffaqiyatli bajarilgan foizi</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {(timeRange === "haftalik" ? weeklyStats : monthlyStats).length > 0 ? (
+                        <div className="h-[300px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart
+                              data={timeRange === "haftalik" ? weeklyStats : monthlyStats}
+                              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="name" />
+                              <YAxis />
+                              <Tooltip />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="bajarilgan"
+                                stroke="#10b981"
+                                activeDot={{ r: 8 }}
+                                name="Bajarilgan buyurtmalar"
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="buyurtmalar"
+                                stroke="#3b82f6"
+                                name="Jami buyurtmalar"
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground">Buyurtmalar ma’lumotlari mavjud emas.</div>
+                      )}
+                    </CardContent>
+                  </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>User Role Distribution</CardTitle>
-                <CardDescription>Breakdown of users by role</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Clients", value: 45 },
-                          { name: "Managers", value: 3 },
-                          { name: "Admins", value: 2 },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {[
-                          { name: "Clients", value: 45, color: "#10b981" },
-                          { name: "Managers", value: 3, color: "#3b82f6" },
-                          { name: "Admins", value: 2, color: "#ef4444" },
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Buyurtma holati taqsimoti</CardTitle>
+                      <CardDescription>Barcha buyurtmalarning joriy holati</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {orderStatusDistribution.length > 0 ? (
+                        <div className="h-[300px] flex items-center justify-center">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={orderStatusDistribution.filter((entry: any) => entry.value > 0)}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {orderStatusDistribution
+                                  .filter((entry: any) => entry.value > 0)
+                                  .map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  ))}
+                              </Pie>
+                              <Tooltip />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className="text-center text-muted-foreground">Buyurtma holati ma’lumotlari mavjud emas.</div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </TabsContent>
+
+              <TabsContent value="mahsulotlar" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Mahsulot kategoriyalari taqsimoti</CardTitle>
+                    <CardDescription>Mahsulotlarning kategoriyalar bo‘yicha taqsimoti</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {productCategories.length > 0 ? (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={productCategories.filter((entry: any) => entry.value > 0)}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {productCategories
+                                .filter((entry: any) => entry.value > 0)
+                                .map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground">Mahsulot kategoriyalari ma’lumotlari mavjud emas.</div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Eng ko‘p sotilgan mahsulotlar</CardTitle>
+                    <CardDescription>Sotuv hajmi bo‘yicha eng mashhur mahsulotlar</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {topSellingProducts.length > 0 ? (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={topSellingProducts}
+                            layout="vertical"
+                            margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" />
+                            <YAxis dataKey="name" type="category" />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="sales" fill="#3b82f6" name="Sotilgan birliklar" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground">Eng ko‘p sotilgan mahsulotlar ma’lumotlari mavjud emas.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="foydalanuvchilar" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Foydalanuvchilar o‘sishi</CardTitle>
+                    <CardDescription>Vaqt o‘tishi bilan yangi foydalanuvchilar ro‘yxatdan o‘tishi</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {userGrowth.length > 0 ? (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart
+                            data={userGrowth}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="month" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="users"
+                              stroke="#3b82f6"
+                              activeDot={{ r: 8 }}
+                              name="Jami foydalanuvchilar"
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground">Foydalanuvchilar o‘sishi ma’lumotlari mavjud emas.</div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Foydalanuvchi rollari taqsimoti</CardTitle>
+                    <CardDescription>Foydalanuvchilarning rollar bo‘yicha taqsimoti</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {userManagementStats.mijozlar + userManagementStats.menejerlar + userManagementStats.adminlar > 0 ? (
+                      <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: "Mijozlar", value: userManagementStats.mijozlar },
+                                { name: "Menejerlar", value: userManagementStats.menejerlar },
+                                { name: "Adminlar", value: userManagementStats.adminlar },
+                              ].filter((entry) => entry.value > 0)}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {[
+                                { name: "Mijozlar", value: userManagementStats.mijozlar, color: "#10b981" },
+                                { name: "Menejerlar", value: userManagementStats.menejerlar, color: "#3b82f6" },
+                                { name: "Adminlar", value: userManagementStats.adminlar, color: "#ef4444" },
+                              ]
+                                .filter((entry) => entry.value > 0)
+                                .map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground">Foydalanuvchi rollari ma’lumotlari mavjud emas.</div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
+        <Toaster />
       </div>
     </DashboardLayout>
-  )
+  );
 }

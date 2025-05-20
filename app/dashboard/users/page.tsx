@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, ArrowUpDown, UserPlus, Shield, ShieldAlert, UserIcon, UserCheck, UserX } from "lucide-react"
 import DashboardLayout from "@/components/dashboard-layout"
 import { useAuth } from "@/hooks/use-auth"
+import { Toaster, toast } from "react-hot-toast"
 import { fetchUsers, makeUserManager, removeUserManager } from "@/lib/api"
 
 interface User {
@@ -37,8 +38,10 @@ export default function UsersPage() {
         const data = await fetchUsers()
         setUsers(data)
         setFilteredUsers(data)
+        toast.success("Foydalanuvchilar muvaffaqiyatli yuklandi!")
       } catch (error) {
-        console.error("Failed to load users:", error)
+        console.error("Foydalanuvchilarni yuklashda xato:", error)
+        toast.error("Foydalanuvchilarni yuklashda xato yuz berdi!")
       } finally {
         setIsLoading(false)
       }
@@ -49,10 +52,10 @@ export default function UsersPage() {
     }
   }, [user])
 
-  // For demo purposes, we'll use placeholder data if the API calls aren't implemented
+  // Namuna ma'lumotlar uchun
   useEffect(() => {
     if (isLoading && users.length === 0) {
-      // Placeholder data
+      // Namuna ma'lumotlar
       const mockUsers: User[] = [
         {
           id: 1,
@@ -102,16 +105,16 @@ export default function UsersPage() {
     }
   }, [isLoading, users.length])
 
-  // Apply filters and sorting
+  // Filtrlash va saralashni qo‘llash
   useEffect(() => {
     let result = [...users]
 
-    // Apply role filter
+    // Rol bo‘yicha filtr
     if (roleFilter !== "all") {
       result = result.filter((user) => user.role === roleFilter)
     }
 
-    // Apply search filter
+    // Qidiruv bo‘yicha filtr
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(
@@ -122,7 +125,7 @@ export default function UsersPage() {
       )
     }
 
-    // Apply sorting
+    // Saralash
     result.sort((a, b) => {
       if (sortOrder === "username-asc") {
         return a.username.localeCompare(b.username)
@@ -143,9 +146,10 @@ export default function UsersPage() {
     try {
       await makeUserManager(userId)
       setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? { ...u, role: "manager" } : u)))
+      toast.success("Foydalanuvchi muvaffaqiyatli menejer qilindi!")
     } catch (error) {
       console.error("Failed to make user a manager:", error)
-      alert("Failed to update user role. Please try again.")
+      toast.error("Foydalanuvchi rolini yangilashda xato yuz berdi. Iltimos, qayta urinib ko‘ring.")
     }
   }
 
@@ -153,9 +157,10 @@ export default function UsersPage() {
     try {
       await removeUserManager(userId)
       setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? { ...u, role: "user" } : u)))
+      toast.success("Menejerlik roli muvaffaqiyatli olib tashlandi!")
     } catch (error) {
       console.error("Failed to remove manager role:", error)
-      alert("Failed to update user role. Please try again.")
+      toast.error("Foydalanuvchi rolini yangilashda xato yuz berdi. Iltimos, qayta urinib ko‘ring.")
     }
   }
 
@@ -172,14 +177,14 @@ export default function UsersPage() {
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
             <Shield className="mr-1 h-3 w-3" />
-            Manager
+            Menejer
           </Badge>
         )
       case "user":
         return (
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <UserIcon className="mr-1 h-3 w-3" />
-            Client
+            Mijoz
           </Badge>
         )
       default:
@@ -187,19 +192,20 @@ export default function UsersPage() {
     }
   }
 
-  // Only admin can access this page
+  // Faqat admin ushbu sahifaga kira oladi
   if (user?.role !== "admin") {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">You don&apos;t have permission to view this page.</p>
+            <h1 className="text-2xl font-bold mb-2">Kirish taqiqlangan</h1>
+            <p className="text-muted-foreground mb-4">Sizda ushbu sahifani ko‘rish uchun ruxsat yo‘q.</p>
             <Link href="/dashboard">
-              <Button>Return to Dashboard</Button>
+              <Button>Boshqaruv paneliga qaytish</Button>
             </Link>
           </div>
         </div>
+        <Toaster />
       </DashboardLayout>
     )
   }
@@ -209,13 +215,13 @@ export default function UsersPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-            <p className="text-muted-foreground">Manage system users and their roles</p>
+            <h1 className="text-3xl font-bold tracking-tight">Foydalanuvchilar</h1>
+            <p className="text-muted-foreground">Tizim foydalanuvchilari va ularning rollarini boshqarish</p>
           </div>
           <Link href="/dashboard/users/new">
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
-              Add User
+              Foydalanuvchi qo‘shish
             </Button>
           </Link>
         </div>
@@ -224,7 +230,7 @@ export default function UsersPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search users..."
+              placeholder="Foydalanuvchilarni qidirish..."
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -234,25 +240,25 @@ export default function UsersPage() {
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-[130px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Role" />
+                <SelectValue placeholder="Rol" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admins</SelectItem>
-                <SelectItem value="manager">Managers</SelectItem>
-                <SelectItem value="user">Clients</SelectItem>
+                <SelectItem value="all">Barcha rollar</SelectItem>
+                <SelectItem value="admin">Adminlar</SelectItem>
+                <SelectItem value="manager">Menejerlar</SelectItem>
+                <SelectItem value="user">Mijozlar</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortOrder} onValueChange={setSortOrder}>
               <SelectTrigger className="w-[130px]">
                 <ArrowUpDown className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Sort" />
+                <SelectValue placeholder="Saralash" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="username-asc">Name (A-Z)</SelectItem>
-                <SelectItem value="username-desc">Name (Z-A)</SelectItem>
-                <SelectItem value="date-asc">Oldest First</SelectItem>
-                <SelectItem value="date-desc">Newest First</SelectItem>
+                <SelectItem value="username-asc">Ism (A-Z)</SelectItem>
+                <SelectItem value="username-desc">Ism (Z-A)</SelectItem>
+                <SelectItem value="date-asc">Avvalgi birinchi</SelectItem>
+                <SelectItem value="date-desc">Yangisi birinchi</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -260,24 +266,24 @@ export default function UsersPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>User Management</CardTitle>
-            <CardDescription>View and manage all system users</CardDescription>
+            <CardTitle>Foydalanuvchilarni boshqarish</CardTitle>
+            <CardDescription>Barcha tizim foydalanuvchilarini ko‘rish va boshqarish</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="text-center py-4">Loading users...</div>
+              <div className="text-center py-4">Foydalanuvchilar yuklanmoqda...</div>
             ) : filteredUsers.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">No users found.</div>
+              <div className="text-center py-4 text-muted-foreground">Foydalanuvchilar topilmadi.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-3 px-2">Username</th>
-                      <th className="text-left py-3 px-2">Contact</th>
-                      <th className="text-left py-3 px-2">Role</th>
-                      <th className="text-left py-3 px-2">Joined</th>
-                      <th className="text-right py-3 px-2">Actions</th>
+                      <th className="text-left py-3 px-2">Foydalanuvchi nomi</th>
+                      <th className="text-left py-3 px-2">Aloqa</th>
+                      <th className="text-left py-3 px-2">Rol</th>
+                      <th className="text-left py-3 px-2">Qo‘shilgan sana</th>
+                      <th className="text-right py-3 px-2">Amallar</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -292,7 +298,7 @@ export default function UsersPage() {
                         </td>
                         <td className="py-3 px-2">{getRoleBadge(user.role)}</td>
                         <td className="py-3 px-2">
-                          <div className="text-sm">{new Date(user.date_joined).toLocaleDateString()}</div>
+                          <div className="text-sm">{new Date(user.date_joined).toLocaleDateString("uz-UZ")}</div>
                         </td>
                         <td className="py-3 px-2 text-right">
                           <div className="flex justify-end space-x-2">
@@ -306,7 +312,7 @@ export default function UsersPage() {
                                     className="text-blue-600"
                                   >
                                     <UserCheck className="mr-1 h-4 w-4" />
-                                    Make Manager
+                                    Menejer qilish
                                   </Button>
                                 ) : (
                                   <Button
@@ -316,7 +322,7 @@ export default function UsersPage() {
                                     className="text-yellow-600"
                                   >
                                     <UserX className="mr-1 h-4 w-4" />
-                                    Remove Manager
+                                    Menejerlikni olib tashlash
                                   </Button>
                                 )}
                               </>
@@ -331,6 +337,7 @@ export default function UsersPage() {
             )}
           </CardContent>
         </Card>
+        <Toaster />
       </div>
     </DashboardLayout>
   )

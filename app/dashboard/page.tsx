@@ -1,7 +1,6 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,6 +9,7 @@ import { ClipboardList, Package, Users, CheckCircle, Clock, Plus, ArrowUpRight }
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
 import { useAuth } from "@/hooks/use-auth"
+import toast from "react-hot-toast" // react-hot-toast import
 import { fetchDashboardStats, fetchPendingOrders, fetchLowStockProducts } from "@/lib/api"
 
 interface DashboardStats {
@@ -36,8 +36,8 @@ interface Order {
 interface Product {
   id: number
   name: string
-  price: number | string // Allow price to be number or string
-  quantity: number | string // Allow quantity to be number or string
+  price: number | string
+  quantity: number | string
   category?: {
     id: number
     name: string
@@ -54,6 +54,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadDashboardData = async () => {
       setIsLoading(true)
+      const loadingToast = toast.loading("Ma'lumotlar yuklanmoqda...") // Loading toast
       try {
         if (user?.role === "admin" || user?.role === "manager") {
           const statsData = await fetchDashboardStats()
@@ -64,12 +65,21 @@ export default function DashboardPage() {
 
           const productsData = await fetchLowStockProducts()
           setLowStockProducts(productsData)
+
+          toast.success("Boshqaruv paneli ma'lumotlari muvaffaqiyatli yuklandi!", {
+            id: loadingToast,
+          }) // Success toast
         } else {
-          // For regular users, we'd fetch their orders
-          // This would be implemented in a real application
+          // Mijozlar uchun buyurtmalar olinadi (haqiqiy ilovada amalga oshiriladi)
+          toast.success("Mijoz ma'lumotlari yuklandi!", {
+            id: loadingToast,
+          })
         }
       } catch (error) {
-        console.error("Failed to load dashboard data:", error)
+        console.error("Boshqaruv paneli ma'lumotlarini yuklashda xato:", error)
+        toast.error("Ma'lumotlarni yuklashda xato yuz berdi.", {
+          id: loadingToast,
+        }) // Error toast
       } finally {
         setIsLoading(false)
       }
@@ -80,10 +90,9 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  // For demo purposes, we'll use placeholder data if the API calls aren't implemented
+  // Demo maqsadida, agar API chaqiruvlari amalga oshirilmagan bo'lsa, placeholder ma'lumotlardan foydalanamiz
   useEffect(() => {
     if (isLoading && !stats) {
-      // Placeholder data
       setStats({
         total_clients: 25,
         total_orders: 100,
@@ -96,8 +105,8 @@ export default function DashboardPage() {
       setPendingOrders([
         {
           id: 1,
-          title: "Laptop won't turn on",
-          problem_description: "My laptop suddenly stopped turning on yesterday.",
+          title: "Noutbuk yoqilmayapti",
+          problem_description: "Noutbukim kecha to'satdan yoqilmay qoldi.",
           status: "pending",
           created_at: "2023-05-15T10:30:00Z",
           client: {
@@ -107,8 +116,8 @@ export default function DashboardPage() {
         },
         {
           id: 2,
-          title: "Blue screen error",
-          problem_description: "Getting blue screen error when starting Windows.",
+          title: "Ko'k ekran xatosi",
+          problem_description: "Windows ishga tushganda ko'k ekran xatosi chiqyapti.",
           status: "pending",
           created_at: "2023-05-14T14:20:00Z",
           client: {
@@ -126,7 +135,7 @@ export default function DashboardPage() {
           quantity: 3,
           category: {
             id: 1,
-            name: "Storage",
+            name: "Saqlash",
           },
         },
         {
@@ -136,72 +145,75 @@ export default function DashboardPage() {
           quantity: 2,
           category: {
             id: 2,
-            name: "Memory",
+            name: "Xotira",
           },
         },
       ])
 
       setIsLoading(false)
+      toast.success("Namunaviy ma'lumotlar yuklandi!") // Success toast for placeholder data
     }
   }, [isLoading, stats])
 
   const isAdmin = user?.role === "admin"
   const isManager = user?.role === "manager" || isAdmin
-  const isClient = user?.role === "user"
+  const isClient = user?.role === "client"
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, {user?.username}!</p>
+          <h1 className="text-3xl font-bold tracking-tight">Boshqaruv paneli</h1>
+          <p className="text-muted-foreground">Xush kelibsiz, {user?.username}!</p>
         </div>
 
         {(isAdmin || isManager) && stats && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">Jami buyurtmalar</CardTitle>
                 <ClipboardList className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total_orders}</div>
-                <p className="text-xs text-muted-foreground">{stats.pending_orders} pending</p>
+                <p className="text-xs text-muted-foreground">{stats.pending_orders} kutilmoqda</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">Bajarilgan buyurtmalar</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.completed_orders}</div>
                 <p className="text-xs text-muted-foreground">
-                  {Math.round((stats.completed_orders / stats.total_orders) * 100)}% completion rate
+                  {Math.round((stats.completed_orders / stats.total_orders) * 100)}% bajarilish darajasi
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+                <CardTitle className="text-sm font-medium">Jami mijozlar</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats.total_clients}</div>
-                <p className="text-xs text-muted-foreground">Active users in the system</p>
+                <p className="text-xs text-muted-foreground">Tizimdagi faol foydalanuvchilar</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Acceptance Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">Qabul qilish darajasi</CardTitle>
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {Math.round((stats.accepted_orders / (stats.accepted_orders + stats.rejected_orders)) * 100)}%
+                  {stats.accepted_orders + stats.rejected_orders > 0 
+                    ? Math.round((stats.accepted_orders / (stats.accepted_orders + stats.rejected_orders)) * 100) 
+                    : 0}%
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {stats.accepted_orders} accepted, {stats.rejected_orders} rejected
+                  {stats.accepted_orders} qabul qilingan, {stats.rejected_orders} rad etilgan
                 </p>
               </CardContent>
             </Card>
@@ -210,28 +222,28 @@ export default function DashboardPage() {
 
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="overview">Umumiy ko'rinish</TabsTrigger>
             {(isAdmin || isManager) && (
               <>
-                <TabsTrigger value="pending-orders">Pending Orders</TabsTrigger>
-                <TabsTrigger value="low-stock">Low Stock</TabsTrigger>
+                <TabsTrigger value="pending-orders">Kutilayotgan buyurtmalar</TabsTrigger>
+                <TabsTrigger value="low-stock">Kam zaxira mahsulotlar</TabsTrigger>
               </>
             )}
-            {isClient && <TabsTrigger value="my-orders">My Orders</TabsTrigger>}
+            {isClient && <TabsTrigger value="my-orders">Mening buyurtmalarim</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
+                  <CardTitle>Tezkor amallar</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {isClient && (
                     <Link href="/dashboard/orders/new">
                       <Button className="w-full">
                         <Plus className="mr-2 h-4 w-4" />
-                        Create New Order
+                        Yangi buyurtma yaratish
                       </Button>
                     </Link>
                   )}
@@ -240,13 +252,13 @@ export default function DashboardPage() {
                       <Link href="/dashboard/orders">
                         <Button className="w-full mb-2">
                           <ClipboardList className="mr-2 h-4 w-4" />
-                          Manage Orders
+                          Buyurtmalarni boshqarish
                         </Button>
                       </Link>
                       <Link href="/dashboard/products">
                         <Button className="w-full">
                           <Package className="mr-2 h-4 w-4" />
-                          Manage Products
+                          Mahsulotlarni boshqarish
                         </Button>
                       </Link>
                     </>
@@ -256,27 +268,27 @@ export default function DashboardPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Status Overview</CardTitle>
-                  <CardDescription>Current system status</CardDescription>
+                  <CardTitle>Holati haqida umumiy ma'lumot</CardTitle>
+                  <CardDescription>Tizimning joriy holati</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">System Status</span>
+                      <span className="text-sm">Tizim holati</span>
                       <span className="text-sm font-medium text-green-500 flex items-center">
-                        <CheckCircle className="mr-1 h-3 w-3" /> Operational
+                        <CheckCircle className="mr-1 h-3 w-3" /> Faol
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">API Status</span>
+                      <span className="text-sm">API holati</span>
                       <span className="text-sm font-medium text-green-500 flex items-center">
-                        <CheckCircle className="mr-1 h-3 w-3" /> Operational
+                        <CheckCircle className="mr-1 h-3 w-3" /> Faol
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm">Database Status</span>
+                      <span className="text-sm">Ma'lumotlar bazasi holati</span>
                       <span className="text-sm font-medium text-green-500 flex items-center">
-                        <CheckCircle className="mr-1 h-3 w-3" /> Operational
+                        <CheckCircle className="mr-1 h-3 w-3" /> Faol
                       </span>
                     </div>
                   </div>
@@ -285,8 +297,8 @@ export default function DashboardPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Your recent actions</CardDescription>
+                  <CardTitle>So'nggi faoliyat</CardTitle>
+                  <CardDescription>Sizning so'nggi amallaringiz</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -295,8 +307,8 @@ export default function DashboardPage() {
                         <Clock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">Logged in</p>
-                        <p className="text-sm text-muted-foreground">Just now</p>
+                        <p className="text-sm font-medium leading-none">Tizimga kirdi</p>
+                        <p className="text-sm text-muted-foreground">Hozir</p>
                       </div>
                     </div>
                     <div className="flex items-start">
@@ -304,8 +316,8 @@ export default function DashboardPage() {
                         <Clock className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">Viewed dashboard</p>
-                        <p className="text-sm text-muted-foreground">2 minutes ago</p>
+                        <p className="text-sm font-medium leading-none">Boshqaruv panelini ko'rdi</p>
+                        <p className="text-sm text-muted-foreground">2 daqiqa oldin</p>
                       </div>
                     </div>
                   </div>
@@ -319,19 +331,19 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>Pending Orders</CardTitle>
-                    <CardDescription>Orders waiting for manager approval</CardDescription>
+                    <CardTitle>Kutilayotgan buyurtmalar</CardTitle>
+                    <CardDescription>Menejer tasdiqlashini kutayotgan buyurtmalar</CardDescription>
                   </div>
                   <Link href="/dashboard/orders?status=pending">
                     <Button variant="outline" size="sm">
-                      View All
+                      Hammasini ko'rish
                       <ArrowUpRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </CardHeader>
                 <CardContent>
                   {pendingOrders.length === 0 ? (
-                    <p className="text-center py-4 text-muted-foreground">No pending orders at the moment.</p>
+                    <p className="text-center py-4 text-muted-foreground">Hozirda kutilayotgan buyurtmalar yo'q.</p>
                   ) : (
                     <div className="space-y-4">
                       {pendingOrders.map((order) => (
@@ -343,14 +355,14 @@ export default function DashboardPage() {
                             </div>
                             <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
                               <Clock className="mr-1 h-3 w-3" />
-                              Pending
+                              Kutilmoqda
                             </Badge>
                           </div>
                           <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">From: {order.client.username}</span>
+                            <span className="text-muted-foreground">Mijoz: {order.client.username}</span>
                             <Link href={`/dashboard/orders/${order.id}`}>
                               <Button variant="ghost" size="sm">
-                                View Details
+                                Tafsilotlarni ko'rish
                               </Button>
                             </Link>
                           </div>
@@ -368,19 +380,19 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>Low Stock Products</CardTitle>
-                    <CardDescription>Products that need to be restocked soon</CardDescription>
+                    <CardTitle>Kam zaxira mahsulotlar</CardTitle>
+                    <CardDescription>Tez orada qayta zaxiralanishi kerak bo'lgan mahsulotlar</CardDescription>
                   </div>
                   <Link href="/dashboard/products?filter=low-stock">
                     <Button variant="outline" size="sm">
-                      View All
+                      Hammasini ko'rish
                       <ArrowUpRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </CardHeader>
                 <CardContent>
                   {lowStockProducts.length === 0 ? (
-                    <p className="text-center py-4 text-muted-foreground">All products are well-stocked.</p>
+                    <p className="text-center py-4 text-muted-foreground">Barcha mahsulotlar yetarli zaxirada.</p>
                   ) : (
                     <div className="space-y-4">
                       {lowStockProducts.map((product) => (
@@ -388,7 +400,7 @@ export default function DashboardPage() {
                           <div>
                             <h4 className="font-medium">{product.name}</h4>
                             <p className="text-sm text-muted-foreground">
-                              Category: {product.category ? product.category.name : "Uncategorized"}
+                              Kategoriya: {product.category ? product.category.name : "Kategoriyasiz"}
                             </p>
                           </div>
                           <div className="text-right">
@@ -399,11 +411,11 @@ export default function DashboardPage() {
                                 : Number.parseFloat(String(product.price || 0)).toFixed(2)}
                             </p>
                             <p className="text-sm text-red-500">
-                              Only{" "}
+                              Faqat{" "}
                               {typeof product.quantity === "number"
                                 ? product.quantity
                                 : Number.parseInt(String(product.quantity || 0), 10)}{" "}
-                              left
+                              dona qoldi
                             </p>
                           </div>
                         </div>
@@ -420,23 +432,23 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle>My Recent Orders</CardTitle>
-                    <CardDescription>Your recent service requests</CardDescription>
+                    <CardTitle>Mening so'nggi buyurtmalarim</CardTitle>
+                    <CardDescription>Sizning so'nggi xizmat so'rovlaringiz</CardDescription>
                   </div>
                   <Link href="/dashboard/orders">
                     <Button variant="outline" size="sm">
-                      View All
+                      Hammasini ko'rish
                       <ArrowUpRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-center py-4 text-muted-foreground">You don&apos;t have any orders yet.</p>
+                  <p className="text-center py-4 text-muted-foreground">Sizda hali buyurtmalar yo'q.</p>
                   <div className="flex justify-center">
                     <Link href="/dashboard/orders/new">
                       <Button>
                         <Plus className="mr-2 h-4 w-4" />
-                        Create New Order
+                        Yangi buyurtma yaratish
                       </Button>
                     </Link>
                   </div>

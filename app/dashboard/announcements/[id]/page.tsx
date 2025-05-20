@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,10 +11,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Calendar, User, Edit, Trash2, Check, X, Upload } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { fetchAnnouncement, acceptAnnouncement, rejectAnnouncement, clientApproveAnnouncement, clientRejectAnnouncement, deleteAnnouncement, fetchProducts, fetchWithAuth, uploadAnnouncementImages } from "@/lib/api";
+import {
+  fetchAnnouncement,
+  acceptAnnouncement,
+  rejectAnnouncement,
+  clientApproveAnnouncement,
+  clientRejectAnnouncement,
+  deleteAnnouncement,
+  fetchProducts,
+  uploadAnnouncementImages,
+} from "@/lib/api";
 
 interface Announcement {
   id: number;
@@ -41,8 +51,7 @@ interface Product {
 export default function AnnouncementDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -60,18 +69,18 @@ export default function AnnouncementDetailPage() {
   useEffect(() => {
     const loadAnnouncement = async () => {
       setIsLoading(true);
+      const loadingToast = toast.loading("E'lon tafsilotlari yuklanmoqda...");
       try {
         const data = await fetchAnnouncement(Number(id));
         setAnnouncement(data);
         if (data.images && data.images.length > 0) {
           setSelectedImage(data.images[0].image);
         }
+        toast.success("E'lon tafsilotlari muvaffaqiyatli yuklandi!", { id: loadingToast });
       } catch (error) {
-        console.error("Failed to load announcement:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load announcement. Please try again.",
+        console.error("E'lonni yuklashda xato:", error);
+        toast.error("E'lonni yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
         setAnnouncement(null);
       } finally {
@@ -80,42 +89,41 @@ export default function AnnouncementDetailPage() {
     };
 
     const loadProducts = async () => {
+      const loadingToast = toast.loading("Mahsulotlar yuklanmoqda...");
       try {
         const data = await fetchProducts();
         setProducts(data);
+        toast.success("Mahsulotlar muvaffaqiyatli yuklandi!", { id: loadingToast });
       } catch (error) {
-        console.error("Failed to load products:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load products. Please try again.",
+        console.error("Mahsulotlarni yuklashda xato:", error);
+        toast.error("Mahsulotlarni yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       }
     };
 
-    if (user) {
-      loadAnnouncement();
-      if (user.role === "admin" || user.role === "manager") {
-        loadProducts();
-      }
+    if (authLoading || !user) return;
+    loadAnnouncement();
+    if (user.role === "admin" || user.role === "manager") {
+      loadProducts();
     }
-  }, [id, user]);
+  }, [id, user, authLoading]);
 
   const handleImageUpload = async () => {
     if (!imageFile) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please select an image to upload.",
-      });
+      toast.error("Iltimos, yuklash uchun rasm tanlang.");
       return;
     }
 
     const formData = new FormData();
     formData.append("image", imageFile);
+    if (!id) {
+      toast.error("E'lon ID topilmadi.");
+      return;
+    }
     formData.append("announcement_id", id.toString());
-    console.log('Uploading FormData:', Object.fromEntries(formData));
 
+    const loadingToast = toast.loading("Rasm yuklanmoqda...");
     try {
       await uploadAnnouncementImages(formData);
       const updatedAnnouncement = await fetchAnnouncement(Number(id));
@@ -124,30 +132,22 @@ export default function AnnouncementDetailPage() {
       if (updatedAnnouncement.images && updatedAnnouncement.images.length > 0) {
         setSelectedImage(updatedAnnouncement.images[updatedAnnouncement.images.length - 1].image);
       }
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully!",
-      });
+      toast.success("Rasm muvaffaqiyatli yuklandi!", { id: loadingToast });
     } catch (error: any) {
-      console.error("Failed to upload image:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to upload image. Please try again.",
+      console.error("Rasm yuklashda xato:", error);
+      toast.error(error.message || "Rasm yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleAcceptAnnouncement = async () => {
     if (!acceptData.estimated_completion_time || !acceptData.estimated_price) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please provide estimated time and price.",
-      });
+      toast.error("Iltimos, taxminiy vaqt va narxni kiriting.");
       return;
     }
 
+    const loadingToast = toast.loading("E'lon qabul qilinmoqda...");
     try {
       const updatedAnnouncement = await acceptAnnouncement(Number(id), {
         estimated_completion_time: Number(acceptData.estimated_completion_time),
@@ -155,109 +155,82 @@ export default function AnnouncementDetailPage() {
         products: acceptData.products,
       });
       setAnnouncement(updatedAnnouncement);
-      toast({
-        title: "Success",
-        description: "Announcement accepted successfully!",
-      });
+      toast.success("E'lon muvaffaqiyatli qabul qilindi!", { id: loadingToast });
+      router.push("/dashboard");
     } catch (error: any) {
-      console.error("Failed to accept announcement:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to accept announcement. Please try again.",
+      console.error("E'lonni qabul qilishda xato:", error);
+      toast.error(error.message || "E'lonni qabul qilishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleRejectAnnouncement = async () => {
     if (!rejectionReason) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please provide a rejection reason.",
-      });
+      toast.error("Iltimos, rad etish sababini kiriting.");
       return;
     }
 
+    const loadingToast = toast.loading("E'lon rad etilmoqda...");
     try {
       const updatedAnnouncement = await rejectAnnouncement(Number(id), rejectionReason);
       setAnnouncement(updatedAnnouncement);
-      toast({
-        title: "Success",
-        description: "Announcement rejected successfully!",
-      });
+      toast.success("E'lon muvaffaqiyatli rad etildi!", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to reject announcement:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to reject announcement. Please try again.",
+      console.error("E'lonni rad etishda xato:", error);
+      toast.error("E'lonni rad etishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleClientApprove = async () => {
+    const loadingToast = toast.loading("E'lon tasdiqlanmoqda...");
     try {
       const updatedAnnouncement = await clientApproveAnnouncement(Number(id));
       setAnnouncement(updatedAnnouncement);
-      toast({
-        title: "Success",
-        description: "Announcement approved successfully! Order created.",
-      });
+      toast.success("E'lon muvaffaqiyatli tasdiqlandi! Buyurtma yaratildi.", { id: loadingToast });
       router.push("/dashboard/orders");
     } catch (error: any) {
-      console.error("Failed to approve announcement:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.response?.data?.detail || "Failed to approve announcement. Please try again.",
-      });
+      console.error("E'lonni tasdiqlashda xato:", error);
+      toast.error(
+        error.response?.data?.detail || "E'lonni tasdiqlashda xato yuz berdi. Iltimos, qayta urinib ko'ring.",
+        { id: loadingToast }
+      );
     }
   };
 
   const handleClientReject = async () => {
     if (!clientRejectionReason) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please provide a rejection reason.",
-      });
+      toast.error("Iltimos, rad etish sababini kiriting.");
       return;
     }
 
+    const loadingToast = toast.loading("E'lon rad etilmoqda...");
     try {
       const updatedAnnouncement = await clientRejectAnnouncement(Number(id), clientRejectionReason);
       setAnnouncement(updatedAnnouncement);
       setClientRejectionReason("");
-      toast({
-        title: "Success",
-        description: "Announcement rejected successfully!",
-      });
+      toast.success("E'lon muvaffaqiyatli rad etildi!", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to reject announcement:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to reject announcement. Please try again.",
+      console.error("E'lonni rad etishda xato:", error);
+      toast.error("E'lonni rad etishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleDeleteAnnouncement = async () => {
-    if (confirm("Are you sure you want to delete this announcement?")) {
+    if (confirm("Haqiqatan ham ushbu e'lonni o'chirmoqchimisiz?")) {
+      const loadingToast = toast.loading("E'lon o'chirilmoqda...");
       try {
         await deleteAnnouncement(Number(id));
-        toast({
-          title: "Success",
-          description: "Announcement deleted successfully!",
-        });
+        toast.success("E'lon muvaffaqiyatli o'chirildi!", { id: loadingToast });
         router.push("/dashboard/announcements");
       } catch (error) {
-        console.error("Failed to delete announcement:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to delete announcement. Please try again.",
+        console.error("E'lonni o'chirishda xato:", error);
+        toast.error("E'lonni o'chirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       }
     }
@@ -293,27 +266,43 @@ export default function AnnouncementDetailPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Kutilmoqda</Badge>;
       case "accepted":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Accepted</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Qabul qilingan</Badge>;
       case "in_process":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">In Process</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Jarayonda</Badge>;
       case "completed":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Yakunlangan</Badge>;
       case "rejected":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Rad etilgan</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Loading...</h1>
-            <p className="text-muted-foreground">Please wait while we load the announcement details.</p>
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, e'lon tafsilotlari yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">E'lon tafsilotlarini ko'rish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
+            </Button>
           </div>
         </div>
       </DashboardLayout>
@@ -325,11 +314,11 @@ export default function AnnouncementDetailPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Announcement Not Found</h1>
-            <p className="text-muted-foreground mb-4">The announcement you are looking for does not exist.</p>
+            <h1 className="text-2xl font-bold mb-2">E'lon topilmadi</h1>
+            <p className="text-muted-foreground mb-4">Siz qidirayotgan e'lon mavjud emas.</p>
             <Button onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
+              Orqaga qaytish
             </Button>
           </div>
         </div>
@@ -338,7 +327,7 @@ export default function AnnouncementDetailPage() {
   }
 
   // Define permissions only if announcement is not null
-  const isOwner = user?.id === announcement.client.id;
+  const isOwner = user?.id === announcement?.client?.id;
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager" && !isAdmin;
   const isManagerOrAdmin = isAdmin || isManager;
@@ -352,7 +341,7 @@ export default function AnnouncementDetailPage() {
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Announcements
+            E'lonlarga qaytish
           </Button>
           {getStatusBadge(announcement.status)}
         </div>
@@ -363,7 +352,7 @@ export default function AnnouncementDetailPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">{announcement.title}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Posted on {new Date(announcement.created_at).toLocaleDateString()}
+                  Joylashtirilgan: {new Date(announcement.created_at).toLocaleDateString("uz-UZ")}
                 </p>
               </CardHeader>
               <CardContent>
@@ -388,7 +377,7 @@ export default function AnnouncementDetailPage() {
                           >
                             <img
                               src={image.image}
-                              alt={`Image ${image.id}`}
+                              alt={`Rasm ${image.id}`}
                               className="object-cover w-full h-full"
                             />
                           </div>
@@ -397,12 +386,12 @@ export default function AnnouncementDetailPage() {
                     </div>
                   ) : (
                     <div className="text-center text-muted-foreground">
-                      No images available for this announcement.
+                      Ushbu e'lon uchun rasmlar mavjud emas.
                     </div>
                   )}
                   {canEdit && (
                     <div className="space-y-2">
-                      <Label>Upload Image</Label>
+                      <Label>Rasm yuklash</Label>
                       <div className="flex items-center gap-2">
                         <Input
                           type="file"
@@ -415,30 +404,30 @@ export default function AnnouncementDetailPage() {
                           className="flex items-center gap-2"
                         >
                           <Upload className="h-4 w-4" />
-                          Upload
+                          Yuklash
                         </Button>
                       </div>
                     </div>
                   )}
                   <div>
-                    <h3 className="text-lg font-medium mb-2">Description</h3>
+                    <h3 className="text-lg font-medium mb-2">Tavsif</h3>
                     <p className="whitespace-pre-line">{announcement.description}</p>
                   </div>
                   {announcement.estimated_price && (
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Estimated Price</h3>
-                      <p>{announcement.estimated_price.toLocaleString()} сум</p>
+                      <h3 className="text-lg font-medium mb-2">Taxminiy narx</h3>
+                      <p>{announcement.estimated_price.toLocaleString("uz-UZ")} so‘m</p>
                     </div>
                   )}
                   {announcement.estimated_completion_time && (
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Estimated Completion Time</h3>
-                      <p>{announcement.estimated_completion_time} hours</p>
+                      <h3 className="text-lg font-medium mb-2">Taxminiy yakunlash vaqti</h3>
+                      <p>{announcement.estimated_completion_time} soat</p>
                     </div>
                   )}
                   {announcement.rejection_reason && (
                     <div className="bg-red-50 p-4 rounded-lg">
-                      <h3 className="text-lg font-medium text-red-600 mb-2">Rejection Reason</h3>
+                      <h3 className="text-lg font-medium text-red-600 mb-2">Rad etish sababi</h3>
                       <p>{announcement.rejection_reason}</p>
                     </div>
                   )}
@@ -450,16 +439,16 @@ export default function AnnouncementDetailPage() {
           <div className="space-y-6">
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Announcement Details</CardTitle>
+                <CardTitle>E'lon tafsilotlari</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Posted</p>
+                      <p className="text-sm font-medium">Joylashtirilgan</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(announcement.created_at).toLocaleString()}
+                        {new Date(announcement.created_at).toLocaleString("uz-UZ")}
                       </p>
                     </div>
                   </div>
@@ -467,13 +456,13 @@ export default function AnnouncementDetailPage() {
                   <div className="flex items-center">
                     <User className="h-4 w-4 mr-2 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Posted By</p>
-                      <p className="text-sm text-muted-foreground">{announcement.client.username}</p>
+                      <p className="text-sm font-medium">Joylashtiruvchi</p>
+                      <p className="text-sm text-muted-foreground">{announcement.client?.username}</p>
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <p className="text-sm font-medium">Contact Email</p>
-                    <p className="text-sm text-muted-foreground ml-2">{announcement.client.email}</p>
+                    <p className="text-sm font-medium">Aloqa email</p>
+                    <p className="text-sm text-muted-foreground ml-2">{announcement.client?.email}</p>
                   </div>
                 </div>
               </CardContent>
@@ -481,7 +470,7 @@ export default function AnnouncementDetailPage() {
 
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Actions</CardTitle>
+                <CardTitle>Amallar</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {canEdit && (
@@ -492,7 +481,7 @@ export default function AnnouncementDetailPage() {
                       onClick={() => router.push(`/dashboard/announcements/${id}/edit`)}
                     >
                       <Edit className="mr-2 h-4 w-4" />
-                      Edit Announcement
+                      E'lonni tahrirlash
                     </Button>
                     <Button
                       className="w-full"
@@ -500,14 +489,14 @@ export default function AnnouncementDetailPage() {
                       onClick={handleDeleteAnnouncement}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Announcement
+                      E'lonni o'chirish
                     </Button>
                   </>
                 )}
                 {canAcceptOrReject && (
                   <>
                     <div className="space-y-2">
-                      <Label>Estimated Completion Time (hours)</Label>
+                      <Label>Taxminiy yakunlash vaqti (soat)</Label>
                       <Input
                         type="number"
                         value={acceptData.estimated_completion_time}
@@ -518,7 +507,7 @@ export default function AnnouncementDetailPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Estimated Price (сум)</Label>
+                      <Label>Taxminiy narx (so‘m)</Label>
                       <Input
                         type="number"
                         value={acceptData.estimated_price}
@@ -529,31 +518,31 @@ export default function AnnouncementDetailPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Add Products</Label>
+                      <Label>Mahsulot qo'shish</Label>
                       <Select value={selectedProduct} onValueChange={setSelectedProduct}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a product" />
+                          <SelectValue placeholder="Mahsulot tanlang" />
                         </SelectTrigger>
                         <SelectContent>
                           {products.map((product) => (
                             <SelectItem key={product.id} value={product.id.toString()}>
-                              {product.name} (Stock: {product.quantity})
+                              {product.name} (Zaxira: {product.quantity})
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <Button onClick={addProduct} className="w-full mt-2">
-                        Add Product
+                        Mahsulot qo'shish
                       </Button>
                     </div>
                     {acceptData.products.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="font-medium">Selected Products</h4>
+                        <h4 className="font-medium">Tanlangan mahsulotlar</h4>
                         {acceptData.products.map((prod, index) => {
                           const product = products.find((p) => p.id === prod.product_id);
                           return (
                             <div key={index} className="flex items-center justify-between">
-                              <span>{product?.name || 'Unknown Product'}</span>
+                              <span>{product?.name || "Noma'lum mahsulot"}</span>
                               <div className="flex items-center gap-2">
                                 <Input
                                   type="number"
@@ -582,14 +571,14 @@ export default function AnnouncementDetailPage() {
                       onClick={handleAcceptAnnouncement}
                     >
                       <Check className="mr-2 h-4 w-4" />
-                      Accept
+                      Qabul qilish
                     </Button>
                     <div className="space-y-2">
-                      <Label>Rejection Reason</Label>
+                      <Label>Rad etish sababi</Label>
                       <Input
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="Reason for rejection"
+                        placeholder="Rad etish sababi"
                       />
                     </div>
                     <Button
@@ -598,7 +587,7 @@ export default function AnnouncementDetailPage() {
                       onClick={handleRejectAnnouncement}
                     >
                       <X className="mr-2 h-4 w-4" />
-                      Reject
+                      Rad etish
                     </Button>
                   </>
                 )}
@@ -610,14 +599,14 @@ export default function AnnouncementDetailPage() {
                       onClick={handleClientApprove}
                     >
                       <Check className="mr-2 h-4 w-4" />
-                      Approve Order
+                      Buyurtmani tasdiqlash
                     </Button>
                     <div className="space-y-2">
-                      <Label>Rejection Reason</Label>
+                      <Label>Rad etish sababi</Label>
                       <Input
                         value={clientRejectionReason}
                         onChange={(e) => setClientRejectionReason(e.target.value)}
-                        placeholder="Reason for rejection"
+                        placeholder="Rad etish sababi"
                       />
                     </div>
                     <Button
@@ -627,18 +616,13 @@ export default function AnnouncementDetailPage() {
                       disabled={!clientRejectionReason}
                     >
                       <X className="mr-2 h-4 w-4" />
-                      Reject Order
+                      Buyurtmani rad etish
                     </Button>
                   </>
                 )}
-                {!canEdit && !canAcceptOrReject && !canClientApproveOrReject && user && (
+                {!canEdit && !canAcceptOrReject && !canClientApproveOrReject && (
                   <p className="text-sm text-muted-foreground text-center">
-                    No actions available for this announcement.
-                  </p>
-                )}
-                {!user && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Please log in to take actions.
+                    Ushbu e'lon uchun hech qanday amallar mavjud emas.
                   </p>
                 )}
               </CardContent>

@@ -1,7 +1,7 @@
 // lib/api.ts
-// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"; // http://104.248.12.204:8000/
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pc.ustaxona.bazarchi.software/api/v1"; // http://104.248.12.204:8000/
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pc.ustaxona.bazarchi.software/api/v1";
+// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 // Helper function to get the auth token
 const getToken = () => {
@@ -312,11 +312,11 @@ export async function removeUserManager(userId: number) {
 }
 
 export async function fetchPendingOrders() {
-  return fetchWithAuth("/application/orders/pending/");
+  return fetchWithAuth("/application/announcements/pending/");
 }
 
 export async function fetchUsers() {
-  return fetchWithAuth("/user/me/");
+  return fetchWithAuth("/user/all_users/");
 }
 
 
@@ -334,3 +334,17 @@ export async function createProductCategory(data: { name: string; description?: 
     body: JSON.stringify(data),
   });
 }
+
+export async function fetchOrderStatusDistribution() {
+  return fetchWithAuth("/application/dashboard/order_status_distribution/");
+}
+
+export async function fetchTopSellingProducts() {
+  return fetchWithAuth("/application/dashboard/top_selling_products/");
+}
+
+export async function fetchUserGrowth() {
+  return fetchWithAuth("/application/dashboard/user_growth/");
+}
+
+

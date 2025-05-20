@@ -11,10 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Calendar, User, Edit, Trash2, Check, X, Clock } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchOrder, startProcessingOrder, rejectOrder, completeOrder, deleteOrder, fetchProducts, fetchWithAuth } from "@/lib/api";
+import Link from "next/link";
 
 interface Order {
   id: number;
@@ -47,8 +48,7 @@ interface Product {
 export default function OrderDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -59,16 +59,16 @@ export default function OrderDetailPage() {
   useEffect(() => {
     const loadOrder = async () => {
       setIsLoading(true);
+      const loadingToast = toast.loading("Buyurtma tafsilotlari yuklanmoqda...");
       try {
         const data = await fetchOrder(Number(id));
         console.log("Fetched Order:", data);
         setOrder(data);
+        toast.success("Buyurtma tafsilotlari muvaffaqiyatli yuklandi!", { id: loadingToast });
       } catch (error: any) {
-        console.error("Failed to load order:", error.message);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load order. Please try again.",
+        console.error("Buyurtmani yuklashda xato:", error.message);
+        toast.error("Buyurtmani yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
         setOrder(null);
       } finally {
@@ -77,105 +77,84 @@ export default function OrderDetailPage() {
     };
 
     const loadProducts = async () => {
+      const loadingToast = toast.loading("Mahsulotlar yuklanmoqda...");
       try {
         const data = await fetchProducts();
         setProducts(data);
+        toast.success("Mahsulotlar muvaffaqiyatli yuklandi!", { id: loadingToast });
       } catch (error) {
-        console.error("Failed to load products:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load products. Please try again.",
+        console.error("Mahsulotlarni yuklashda xato:", error);
+        toast.error("Mahsulotlarni yuklashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       }
     };
 
-    if (user) {
-      loadOrder();
-      if (user.role === "manager" || user.role === "admin") {
-        loadProducts();
-      }
+    if (authLoading || !user) return;
+    loadOrder();
+    if (user.role === "manager" || user.role === "admin") {
+      loadProducts();
     }
-  }, [id, user]);
+  }, [id, user, authLoading]);
 
   const handleStartProcessing = async () => {
+    const loadingToast = toast.loading("Buyurtma jarayonga qo'yilmoqda...");
     try {
       const updatedOrder = await startProcessingOrder(Number(id));
       setOrder(updatedOrder);
-      toast({
-        title: "Success",
-        description: "Order is now in process.",
-      });
+      toast.success("Buyurtma jarayonga qo'yildi.", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to start processing order:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to start processing order. Please try again.",
+      console.error("Buyurtmani jarayonga qo'yishda xato:", error);
+      toast.error("Buyurtmani jarayonga qo'yishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleCompleteOrder = async () => {
+    const loadingToast = toast.loading("Buyurtma yakunlanmoqda...");
     try {
       const updatedOrder = await completeOrder(Number(id));
       setOrder(updatedOrder);
-      toast({
-        title: "Success",
-        description: "Order marked as completed.",
-      });
+      toast.success("Buyurtma yakunlangan deb belgilandi.", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to complete order:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to complete order. Please try again.",
+      console.error("Buyurtmani yakunlashda xato:", error);
+      toast.error("Buyurtmani yakunlashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleRejectOrder = async () => {
     if (!rejectionReason) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please provide a rejection reason.",
-      });
+      toast.error("Iltimos, rad etish sababini kiriting.");
       return;
     }
 
+    const loadingToast = toast.loading("Buyurtma rad etilmoqda...");
     try {
       const updatedOrder = await rejectOrder(Number(id), rejectionReason);
       setOrder(updatedOrder);
-      toast({
-        title: "Success",
-        description: "Order rejected successfully.",
-      });
+      toast.success("Buyurtma muvaffaqiyatli rad etildi.", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to reject order:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to reject order. Please try again.",
+      console.error("Buyurtmani rad etishda xato:", error);
+      toast.error("Buyurtmani rad etishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleDeleteOrder = async () => {
-    if (confirm("Are you sure you want to delete this order?")) {
+    if (confirm("Haqiqatan ham ushbu buyurtmani o'chirmoqchimisiz?")) {
+      const loadingToast = toast.loading("Buyurtma o'chirilmoqda...");
       try {
         await deleteOrder(Number(id));
-        toast({
-          title: "Success",
-          description: "Order deleted successfully.",
-        });
+        toast.success("Buyurtma muvaffaqiyatli o'chirildi.", { id: loadingToast });
         router.push("/dashboard/orders");
       } catch (error) {
-        console.error("Failed to delete order:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to delete order. Please try again.",
+        console.error("Buyurtmani o'chirishda xato:", error);
+        toast.error("Buyurtmani o'chirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       }
     }
@@ -183,14 +162,11 @@ export default function OrderDetailPage() {
 
   const handleAddProduct = async () => {
     if (!selectedProduct || !productQuantity) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please select a product and specify a quantity.",
-      });
+      toast.error("Iltimos, mahsulot tanlang va miqdorni kiriting.");
       return;
     }
 
+    const loadingToast = toast.loading("Mahsulot buyurtmaga qo'shilmoqda...");
     try {
       const response = await fetchWithAuth(`/application/orders/${id}/add_product/`, {
         method: "POST",
@@ -202,37 +178,28 @@ export default function OrderDetailPage() {
       setOrder(response);
       setSelectedProduct("");
       setProductQuantity("1");
-      toast({
-        title: "Success",
-        description: "Product added to order.",
-      });
+      toast.success("Mahsulot buyurtmaga qo'shildi.", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to add product:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to add product. Please try again.",
+      console.error("Mahsulot qo'shishda xato:", error);
+      toast.error("Mahsulot qo'shishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
 
   const handleRemoveProduct = async (productId: number) => {
+    const loadingToast = toast.loading("Mahsulot buyurtmadan o'chirilmoqda...");
     try {
       const response = await fetchWithAuth(`/application/orders/${id}/remove_product/`, {
         method: "POST",
         body: JSON.stringify({ product_id: productId }),
       });
       setOrder(response);
-      toast({
-        title: "Success",
-        description: "Product removed from order.",
-      });
+      toast.success("Mahsulot buyurtmadan o'chirildi.", { id: loadingToast });
     } catch (error) {
-      console.error("Failed to remove product:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to remove product. Please try again.",
+      console.error("Mahsulot o'chirishda xato:", error);
+      toast.error("Mahsulot o'chirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+        id: loadingToast,
       });
     }
   };
@@ -240,13 +207,13 @@ export default function OrderDetailPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "client_approved":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Client Approved</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Mijoz tomonidan tasdiqlangan</Badge>;
       case "in_process":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">In Process</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Jarayonda</Badge>;
       case "completed":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Completed</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Yakunlangan</Badge>;
       case "rejected":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200">Rad etilgan</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -260,21 +227,37 @@ export default function OrderDetailPage() {
     const end = new Date(start.getTime() + order.estimated_completion_time * 60 * 60 * 1000);
     const now = new Date();
     if (now > end) {
-      return "Overdue";
+      return "Muddat o'tgan";
     }
     const diff = end.getTime() - now.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${minutes}m remaining`;
+    return `${hours} soat ${minutes} daqiqa qoldi`;
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <Skeleton className="h-8 w-64 mb-2" />
-            <Skeleton className="h-4 w-48" />
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, buyurtma tafsilotlari yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Buyurtma tafsilotlarini ko'rish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
+            </Button>
           </div>
         </div>
       </DashboardLayout>
@@ -286,11 +269,11 @@ export default function OrderDetailPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Order Not Found</h1>
-            <p className="text-muted-foreground mb-4">The order you are looking for does not exist.</p>
+            <h1 className="text-2xl font-bold mb-2">Buyurtma topilmadi</h1>
+            <p className="text-muted-foreground mb-4">Siz qidirayotgan buyurtma mavjud emas.</p>
             <Button onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
+              Orqaga qaytish
             </Button>
           </div>
         </div>
@@ -312,7 +295,7 @@ export default function OrderDetailPage() {
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Orders
+            Buyurtmalarga qaytish
           </Button>
           {getStatusBadge(order.status)}
         </div>
@@ -323,18 +306,18 @@ export default function OrderDetailPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">{order.title}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Created on {new Date(order.created_at).toLocaleDateString()}
+                  Yaratilgan: {new Date(order.created_at).toLocaleDateString("uz-UZ")}
                 </p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {order.products?.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Assigned Products</h3>
+                      <h3 className="text-lg font-medium mb-2">Tayinlangan mahsulotlar</h3>
                       <ul className="list-disc pl-5">
                         {order.products.map((item, index) => (
                           <li key={index} className="text-sm">
-                            {item.product.name} (Quantity: {item.quantity})
+                            {item.product.name} (Miqdor: {item.quantity})
                             {isManagerOrAdmin && order.status !== "completed" && (
                               <Button
                                 variant="ghost"
@@ -352,25 +335,25 @@ export default function OrderDetailPage() {
                   )}
                   {order.estimated_price && (
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Estimated Price</h3>
-                      <p>{order.estimated_price} сум</p>
+                      <h3 className="text-lg font-medium mb-2">Taxminiy narx</h3>
+                      <p>{order.estimated_price.toLocaleString("uz-UZ")} so‘m</p>
                     </div>
                   )}
                   {order.estimated_completion_time && (
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Estimated Completion Time</h3>
-                      <p>{order.estimated_completion_time} hours</p>
+                      <h3 className="text-lg font-medium mb-2">Taxminiy yakunlash vaqti</h3>
+                      <p>{order.estimated_completion_time} soat</p>
                     </div>
                   )}
                   {isOwner && order.status === "in_process" && (
                     <div>
-                      <h3 className="text-lg font-medium mb-2">Time Remaining</h3>
-                      <p>{getTimeRemaining() || "Calculating..."}</p>
+                      <h3 className="text-lg font-medium mb-2">Qolgan vaqt</h3>
+                      <p>{getTimeRemaining() || "Hisoblanmoqda..."}</p>
                     </div>
                   )}
                   {order.rejection_reason && (
                     <div className="bg-red-50 p-4 rounded-lg">
-                      <h3 className="text-lg font-medium text-red-600 mb-2">Rejection Reason</h3>
+                      <h3 className="text-lg font-medium text-red-600 mb-2">Rad etish sababi</h3>
                       <p>{order.rejection_reason}</p>
                     </div>
                   )}
@@ -382,16 +365,16 @@ export default function OrderDetailPage() {
           <div className="space-y-6">
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Order Details</CardTitle>
+                <CardTitle>Buyurtma tafsilotlari</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Created</p>
+                      <p className="text-sm font-medium">Yaratilgan</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(order.created_at).toLocaleString()}
+                        {new Date(order.created_at).toLocaleString("uz-UZ")}
                       </p>
                     </div>
                   </div>
@@ -399,12 +382,12 @@ export default function OrderDetailPage() {
                   <div className="flex items-center">
                     <User className="h-4 w-4 mr-2 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Client</p>
+                      <p className="text-sm font-medium">Mijoz</p>
                       <p className="text-sm text-muted-foreground">{order.client.username}</p>
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <p className="text-sm font-medium">Contact Email</p>
+                    <p className="text-sm font-medium">Aloqa email</p>
                     <p className="text-sm text-muted-foreground ml-2">{order.client.email}</p>
                   </div>
                   {order.manager && (
@@ -413,7 +396,7 @@ export default function OrderDetailPage() {
                       <div className="flex items-center">
                         <User className="h-4 w-4 mr-2 text-muted-foreground" />
                         <div>
-                          <p className="text-sm font-medium">Manager</p>
+                          <p className="text-sm font-medium">Menejer</p>
                           <p className="text-sm text-muted-foreground">{order.manager.username}</p>
                         </div>
                       </div>
@@ -425,7 +408,7 @@ export default function OrderDetailPage() {
 
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle>Actions</CardTitle>
+                <CardTitle>Amallar</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {canEdit && (
@@ -436,7 +419,7 @@ export default function OrderDetailPage() {
                       onClick={() => router.push(`/dashboard/orders/${id}/edit`)}
                     >
                       <Edit className="mr-2 h-4 w-4" />
-                      Edit Order
+                      Buyurtmani tahrirlash
                     </Button>
                     <Button
                       className="w-full"
@@ -444,7 +427,7 @@ export default function OrderDetailPage() {
                       onClick={handleDeleteOrder}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Order
+                      Buyurtmani o'chirish
                     </Button>
                   </>
                 )}
@@ -457,7 +440,7 @@ export default function OrderDetailPage() {
                         onClick={handleStartProcessing}
                       >
                         <Check className="mr-2 h-4 w-4" />
-                        Start Processing
+                        Jarayonni boshlash
                       </Button>
                     )}
                     {order.status === "in_process" && (
@@ -467,21 +450,21 @@ export default function OrderDetailPage() {
                         onClick={handleCompleteOrder}
                       >
                         <Check className="mr-2 h-4 w-4" />
-                        Complete Order
+                        Buyurtmani yakunlash
                       </Button>
                     )}
                     {order.status !== "completed" && order.status !== "rejected" && (
                       <>
                         <div className="space-y-2">
-                          <Label>Add Product</Label>
+                          <Label>Mahsulot qo'shish</Label>
                           <Select value={selectedProduct} onValueChange={setSelectedProduct}>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a product" />
+                              <SelectValue placeholder="Mahsulot tanlang" />
                             </SelectTrigger>
                             <SelectContent>
                               {products.map((product) => (
                                 <SelectItem key={product.id} value={product.id.toString()}>
-                                  {product.name} (Stock: {product.quantity})
+                                  {product.name} (Zaxira: {product.quantity})
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -491,40 +474,35 @@ export default function OrderDetailPage() {
                             min="1"
                             value={productQuantity}
                             onChange={(e) => setProductQuantity(e.target.value)}
-                            placeholder="Quantity"
+                            placeholder="Miqdor"
                           />
                           <Button onClick={handleAddProduct} className="w-full">
-                            Add Product
+                            Mahsulot qo'shish
                           </Button>
                         </div>
                         <div className="space-y-2">
-                          <Label>Rejection Reason</Label>
+                          <Label>Rad etish sababi</Label>
                           <Input
                             value={rejectionReason}
                             onChange={(e) => setRejectionReason(e.target.value)}
-                            placeholder="Reason for rejection"
+                            placeholder="Rad etish sababi"
                           />
                           <Button
-                            className="w-full border Jesus Christ border-red-500 text-red-500 hover:bg-red-50"
+                            className="w-full border-red-500 text-red-500 hover:bg-red-50"
                             variant="outline"
                             onClick={handleRejectOrder}
                           >
                             <X className="mr-2 h-4 w-4" />
-                            Reject Order
+                            Buyurtmani rad etish
                           </Button>
                         </div>
                       </>
                     )}
                   </>
                 )}
-                {!canEdit && !canManage && user && (
+                {!canEdit && !canManage && (
                   <p className="text-sm text-muted-foreground text-center">
-                    No actions available for this order.
-                  </p>
-                )}
-                {!user && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Please log in to take actions.
+                    Ushbu buyurtma uchun hech qanday amallar mavjud emas.
                   </p>
                 )}
               </CardContent>

@@ -10,7 +10,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchProduct, deleteProduct } from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import toast from "react-hot-toast";
 
 interface Product {
   id: number;
@@ -31,8 +31,7 @@ interface Product {
 export default function ProductDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -41,15 +40,15 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const loadProduct = async () => {
       setIsLoading(true);
+      const loadingToast = toast.loading("Mahsulot tafsilotlari yuklanmoqda...");
       try {
         const data = await fetchProduct(Number(productId));
         setProduct(data);
+        toast.success("Mahsulot tafsilotlari muvaffaqiyatli yuklandi!", { id: loadingToast });
       } catch (error) {
-        console.error("Failed to load product:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load product. It may not exist.",
+        console.error("Mahsulotni yuklashda xato:", error);
+        toast.error("Mahsulotni yuklashda xato yuz berdi. U mavjud emas bo'lishi mumkin.", {
+          id: loadingToast,
         });
         router.push("/dashboard/products");
       } finally {
@@ -57,26 +56,21 @@ export default function ProductDetailPage() {
       }
     };
 
-    if (user && productId) {
-      loadProduct();
-    }
-  }, [user, productId, toast, router]);
+    if (authLoading || !user || !productId) return;
+    loadProduct();
+  }, [user, productId, router, authLoading]);
 
   const handleDeleteProduct = async () => {
-    if (confirm("Are you sure you want to delete this product?")) {
+    if (confirm("Haqiqatan ham ushbu mahsulotni o'chirmoqchimisiz?")) {
+      const loadingToast = toast.loading("Mahsulot o'chirilmoqda...");
       try {
         await deleteProduct(Number(productId));
-        toast({
-          title: "Success",
-          description: "Product deleted successfully.",
-        });
+        toast.success("Mahsulot muvaffaqiyatli o'chirildi.", { id: loadingToast });
         router.push("/dashboard/products?refresh=true");
       } catch (error) {
-        console.error("Failed to delete product:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to delete product. Please try again.",
+        console.error("Mahsulotni o'chirishda xato:", error);
+        toast.error("Mahsulotni o'chirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+          id: loadingToast,
         });
       }
     }
@@ -84,21 +78,36 @@ export default function ProductDetailPage() {
 
   const getStockBadge = (quantity: number) => {
     if (quantity === 0) {
-      return <Badge className="bg-red-100 text-red-800 border-red-200">Out of Stock</Badge>;
+      return <Badge className="bg-red-100 text-red-800 border-red-200">Zaxira yo'q</Badge>;
     } else if (quantity <= 10) {
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Low Stock</Badge>;
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Kam zaxira</Badge>;
     }
-    return <Badge className="bg-green-100 text-green-800 border-green-200">In Stock</Badge>;
+    return <Badge className="bg-green-100 text-green-800 border-green-200">Zaxirada</Badge>;
   };
+
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-2">Yuklanmoqda...</h1>
+            <p className="text-muted-foreground">Iltimos, mahsulot tafsilotlari yuklanishini kuting.</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!user) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-            <p className="text-muted-foreground mb-4">Please log in to view product details.</p>
-            <Button onClick={() => router.push("/login")}>Go to Login</Button>
+            <h1 className="text-2xl font-bold mb-2">Ruxsat yo'q</h1>
+            <p className="text-muted-foreground mb-4">Mahsulot tafsilotlarini ko'rish uchun tizimga kiring.</p>
+            <Button asChild>
+              <Link href="/login">Tizimga kirish</Link>
+            </Button>
           </div>
         </div>
       </DashboardLayout>
@@ -111,7 +120,7 @@ export default function ProductDetailPage() {
         <div className="space-y-6 p-4 sm:p-6">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle>Loading...</CardTitle>
+              <CardTitle>Yuklanmoqda...</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -131,12 +140,12 @@ export default function ProductDetailPage() {
       <DashboardLayout>
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
-            <p className="text-muted-foreground mb-4">The product you are looking for does not exist.</p>
+            <h1 className="text-2xl font-bold mb-2">Mahsulot topilmadi</h1>
+            <p className="text-muted-foreground mb-4">Siz qidirayotgan mahsulot mavjud emas.</p>
             <Button asChild>
               <Link href="/dashboard/products">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Products
+                Mahsulotlarga qaytish
               </Link>
             </Button>
           </div>
@@ -154,13 +163,13 @@ export default function ProductDetailPage() {
           <Button variant="outline" asChild>
             <Link href="/dashboard/products">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Products
+              Mahsulotlarga qaytish
             </Link>
           </Button>
           {isManagerOrAdmin && (
             <Button variant="destructive" onClick={handleDeleteProduct}>
               <Trash2 className="mr-2 h-4 w-4" />
-              Delete Product
+              Mahsulotni o'chirish
             </Button>
           )}
         </div>
@@ -171,50 +180,51 @@ export default function ProductDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold">Product Details</h3>
+              <h3 className="text-lg font-semibold">Mahsulot tafsilotlari</h3>
               {getStockBadge(product.quantity)}
             </div>
             <div className="space-y-2">
               <p>
-                <span className="font-medium">Name:</span> {product.name}
+                <span className="font-medium">Nomi:</span> {product.name}
               </p>
               <p>
-                <span className="font-medium">Description:</span>{" "}
-                {product.description || "No description provided"}
+                <span className="font-medium">Tavsif:</span>{" "}
+                {product.description || "Tavsif berilmagan"}
               </p>
               <p>
-                <span className="font-medium">Price:</span> {product.price} сум
+                <span className="font-medium">Narxi:</span>{" "}
+                {Number(product.price).toLocaleString("uz-UZ")} so‘m
               </p>
               <p>
-                <span className="font-medium">Stock:</span> {product.quantity}
+                <span className="font-medium">Zaxira:</span> {product.quantity}
               </p>
               <p>
-                <span className="font-medium">Category:</span>{" "}
-                {product.category_details ? product.category_details.name : "No Category"}
+                <span className="font-medium">Kategoriya:</span>{" "}
+                {product.category_details ? product.category_details.name : "Kategoriyasiz"}
               </p>
               <p>
-                <span className="font-medium">Created At:</span>{" "}
-                {new Date(product.created_at).toLocaleString()}
+                <span className="font-medium">Yaratilgan:</span>{" "}
+                {new Date(product.created_at).toLocaleString("uz-UZ")}
               </p>
               <p>
-                <span className="font-medium">Updated At:</span>{" "}
-                {new Date(product.updated_at).toLocaleString()}
+                <span className="font-medium">Yangilangan:</span>{" "}
+                {new Date(product.updated_at).toLocaleString("uz-UZ")}
               </p>
             </div>
             {product.images && product.images.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Images</h3>
+                <h3 className="text-lg font-semibold">Rasmlar</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {product.images.map((image, index) => (
                     <div key={image.id} className="relative">
                       <img
                         src={image.image}
-                        alt={`${product.name} image ${index + 1}`}
+                        alt={`${product.name} rasm ${index + 1}`}
                         className="w-full h-48 object-cover rounded-md"
                       />
                       {index === 0 && (
                         <span className="absolute top-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded">
-                          Main
+                          Asosiy
                         </span>
                       )}
                     </div>
