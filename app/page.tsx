@@ -96,7 +96,7 @@ export default function Home() {
   };
 
   try {
-    const response = await fetch("http://localhost:8000/api/v1/user/register_and_announce/", {
+    const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/register_and_announce/", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
