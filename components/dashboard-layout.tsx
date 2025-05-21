@@ -44,8 +44,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         try {
           // Fetch notifications from the API
           const notifications = await fetchNotifications()
-          // Count only unread notifications
-          const unreadCount = notifications.filter(notification => !notification.read).length
+          const unreadCount = notifications.filter((notification: { read: boolean }) => !notification.read).length
           setUnreadNotifications(unreadCount)
         } catch (error) {
           console.error("Failed to fetch notifications:", error)

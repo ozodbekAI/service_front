@@ -8,6 +8,7 @@ interface User {
   email: string
   phone: string
   role: "client" | "manager" | "admin"
+  is_legal: boolean
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<void>
   logout: () => void
   isLoading: boolean
+  setUser: (user: User | null) => void;
 }
 
 interface RegisterData {
@@ -23,6 +25,8 @@ interface RegisterData {
   email: string
   phone: string
   password: string
+  is_legal: boolean; // Add this line
+  companyName?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -55,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       // In a real app, this would be an API call
       // For demo purposes, we'll simulate a successful login
-      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/login/", {
+      const response = await fetch("http://localhost:8000/api/v1/user/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -88,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
     try {
       // In a real app, this would be an API call
-      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/register/", {
+      const response = await fetch("http://localhost:8000/api/v1/user/register/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -122,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/login"
   }
 
-  return <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, register, logout, isLoading, setUser }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

@@ -1,7 +1,7 @@
 // lib/api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pc.ustaxona.bazarchi.software/api/v1"; // http://104.248.12.204:8000/
+// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pc.ustaxona.bazarchi.software/api/v1"; // http://104.248.12.204:8000/
 
-// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 // Helper function to get the auth token
 const getToken = () => {
@@ -38,8 +38,10 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
 }
 
 // Generic fetch for multipart/form-data (image uploads)
-async function fetchWithFormData(endpoint: string, formData: FormData) {
-  const token = getToken();
+async function fetchWithFormData(endpoint: string, formData: FormData, token: string | null = null) {
+  console.log("Sending request to:", `${API_BASE_URL}${endpoint}`);
+  console.log("Token provided:", token ? "Yes" : "No");
+  console.log("Headers:", token ? { Authorization: `Bearer ${token}` } : {});
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: "POST",
@@ -51,14 +53,18 @@ async function fetchWithFormData(endpoint: string, formData: FormData) {
 
   if (!response.ok) {
     if (response.status === 401) {
+      console.error("401 Error:", await response.text());
       throw new Error("Authentication failed. Please log in again.");
     }
     const error = await response.json();
+    console.error("Error response:", error);
     throw new Error(error.detail || "Image upload failed");
   }
 
   return response.json();
 }
+
+
 
 // Auth API calls
 export async function loginUser(email: string, password: string) {
@@ -160,8 +166,8 @@ export async function clientApproveAnnouncement(id: number) {
   });
 }
 
-export async function uploadAnnouncementImages(formData: FormData) {
-  return fetchWithFormData("/application/announcements-image/", formData);
+export async function uploadAnnouncementImages(formData: FormData, token: string | null = null) {
+  return fetchWithFormData("/application/announcements-image/", formData, token);
 }
 
 // Orders API calls
@@ -317,6 +323,10 @@ export async function fetchPendingOrders() {
 
 export async function fetchUsers() {
   return fetchWithAuth("/user/all_users/");
+}
+
+export async function uuploadAnnouncementImages(formData: FormData, token: string | null = null) {
+  return fetchWithFormData("/application/unauthenticated-announcements-image/", formData, token); // Updated endpoint
 }
 
 

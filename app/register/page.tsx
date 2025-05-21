@@ -1,74 +1,81 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Monitor, AlertCircle } from "lucide-react"
-import { Toaster, toast } from "react-hot-toast"
-import { useAuth } from "@/hooks/use-auth"
+import React from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Monitor, AlertCircle, Briefcase } from "lucide-react";
+import { Toaster, toast } from "react-hot-toast";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const { register } = useAuth()
+  const router = useRouter();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     phone: "",
+    is_legal: false,
+    companyName: "",
     password: "",
     confirmPassword: "",
-  })
-  const [isAgreed, setIsAgreed] = useState(false)
-  const [isTermsOpen, setIsTermsOpen] = useState(false)
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  });
+  const [isAgreed, setIsAgreed] = useState(false);
+  const [isTermsOpen, setIsTermsOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     if (!isAgreed) {
-      setError("Ro‘yxatdan o‘tish uchun foydalanish shartlariga rozilik berishingiz kerak.")
-      toast.error("Foydalanish shartlariga rozilik berishingiz kerak!")
-      return
+      setError("Ro‘yxatdan o‘tish uchun foydalanish shartlariga rozilik berishingiz kerak.");
+      toast.error("Foydalanish shartlariga rozilik berishingiz kerak!");
+      return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError("Parollar mos kelmadi")
-      toast.error("Parollar mos kelmadi!")
-      return
+      setError("Parollar mos kelmadi");
+      toast.error("Parollar mos kelmadi!");
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
       await register({
         username: formData.username,
         email: formData.email,
         phone: formData.phone,
+        is_legal: formData.is_legal,
+        companyName: formData.is_legal ? formData.companyName : undefined,
         password: formData.password,
-      })
-      toast.success("Hisob muvaffaqiyatli yaratildi!")
-      router.push("/login?registered=true")
+      });
+      toast.success("Hisob muvaffaqiyatli yaratildi!");
+      router.push("/login?registered=true");
     } catch (err: any) {
-      setError(err.message || "Ro‘yxatdan o‘tishda xato yuz berdi. Iltimos, qayta urinib ko‘ring.")
-      toast.error("Ro‘yxatdan o‘tishda xato yuz berdi!")
+      setError(err.message || "Ro‘yxatdan o‘tishda xato yuz berdi. Iltimos, qayta urinib ko‘ring.");
+      toast.error("Ro‘yxatdan o‘tishda xato yuz berdi!");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4 py-8">
@@ -94,12 +101,25 @@ export default function RegisterPage() {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="username">Foydalanuvchi nomi</Label>
-                <Input id="username" name="username" value={formData.username} onChange={handleChange} required />
+                <Label htmlFor="fullname">F.I.SH</Label>
+                <Input
+                  id="fullname"
+                  name="fullname"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Elektron pochta</Label>
-                <Input id="email" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefon</Label>
@@ -113,6 +133,34 @@ export default function RegisterPage() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="is_legal">Mijoz turi</Label>
+                <select
+                  id="is_legal"
+                  name="is_legal"
+                  value={formData.is_legal ? "legal" : "individual"}
+                  onChange={handleChange}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  <option value="individual">Jismoniy shaxs</option>
+                  <option value="legal">Yuridik shaxs</option>
+                </select>
+              </div>
+              {formData.is_legal && (
+                <div className="space-y-2">
+                  <Label htmlFor="companyName" className="flex items-center">
+                    <Briefcase className="h-5 w-5 mr-2 text-primary" /> Kompaniya nomi
+                  </Label>
+                  <Input
+                    id="companyName"
+                    name="companyName"
+                    value={formData.companyName}
+                    onChange={handleChange}
+                    required
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="password">Parol</Label>
                 <Input
@@ -136,7 +184,11 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="flex items-center space-x-2">
-                <Checkbox id="agree" checked={isAgreed} onCheckedChange={(checked) => setIsAgreed(checked as boolean)} />
+                <Checkbox
+                  id="agree"
+                  checked={isAgreed}
+                  onCheckedChange={(checked) => setIsAgreed(checked as boolean)}
+                />
                 <Label htmlFor="agree" className="text-sm">
                   <Dialog open={isTermsOpen} onOpenChange={setIsTermsOpen}>
                     <DialogTrigger asChild>
@@ -182,5 +234,5 @@ export default function RegisterPage() {
         <Toaster />
       </div>
     </div>
-  )
+  );
 }

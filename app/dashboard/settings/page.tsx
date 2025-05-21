@@ -19,7 +19,7 @@ import Link from "next/link";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, setUser } = useAuth();
   const [profileForm, setProfileForm] = useState({
     username: "",
     email: "",
@@ -77,22 +77,141 @@ export default function SettingsPage() {
     }));
   };
 
+  // Tokenni yangilash funksiyasi
+  const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem("refresh_token");
+    if (!refreshToken) {
+      throw new Error("Refresh token topilmadi. Iltimos, qayta kiring.");
+    }
+
+    const response = await fetch("http://localhost:8000/api/token/refresh/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Tokenni yangilashda xato yuz berdi.");
+    }
+
+    const data = await response.json();
+    localStorage.setItem("access_token", data.access);
+    return data.access;
+  };
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     const loadingToast = toast.loading("Profil yangilanmoqda...");
 
     try {
-      // In a real app, this would be an API call to update the user profile
-      // await updateUserProfile(profileForm);
+      let token = localStorage.getItem("access_token");
+      if (!token) {
+        throw new Error("Tizimga qayta kiring, token topilmadi.");
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Step 1: Update the profile
+      let updateResponse = await fetch("http://localhost:8000/api/v1/user/update_profile/", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          username: profileForm.username, // Backend expects 'fullname'
+          email: profileForm.email,
+          phone: profileForm.phone,
+        }),
+      });
+
+      // Agar 401 xatosi bo'lsa, tokenni yangilashga urinamiz
+      if (updateResponse.status === 401) {
+        try {
+          token = await refreshAccessToken();
+          // Token yangilangandan so'ng qayta urinib ko'ramiz
+          updateResponse = await fetch("http://localhost:8000/api/v1/user/update_profile/", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              username: profileForm.username,
+              email: profileForm.email,
+              phone: profileForm.phone,
+            }),
+          });
+        } catch (refreshError) {
+          toast.error("Sessiya tugadi. Iltimos, qayta kiring.", { id: loadingToast });
+          router.push("/login");
+          return;
+        }
+      }
+
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.detail || "Profilni yangilashda xato yuz berdi.");
+      }
+
+      // Step 2: Fetch updated user data
+      let meResponse = await fetch("http://localhost:8000/api/v1/user/me/", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Agar 401 xatosi bo'lsa, tokenni yangilashga urinamiz
+      if (meResponse.status === 401) {
+        try {
+          token = await refreshAccessToken();
+          meResponse = await fetch("http://localhost:8000/api/v1/user/me/", {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        } catch (refreshError) {
+          toast.error("Sessiya tugadi. Iltimos, qayta kiring.", { id: loadingToast });
+          router.push("/login");
+          return;
+        }
+      }
+
+      if (!meResponse.ok) {
+        const errorData = await meResponse.json();
+        throw new Error(errorData.detail || "Foydalanuvchi ma'lumotlarini olishda xato yuz berdi.");
+      }
+
+      const updatedUser = await meResponse.json();
+      // Step 3: Update the auth context with the new user data
+      setUser({
+        id: updatedUser.id,
+        username: updatedUser.username, 
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        is_legal: updatedUser.is_legal, // Add this line
+      });
+
+      // Formani yangilangan ma'lumotlar bilan sinxronlashtirish
+      setProfileForm({
+        username: updatedUser.fullname || "",
+        email: updatedUser.email || "",
+        phone: updatedUser.phone || "",
+      });
 
       toast.success("Profil muvaffaqiyatli yangilandi", { id: loadingToast });
     } catch (error) {
       console.error("Profilni yangilashda xato:", error);
-      toast.error("Profilni yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", { id: loadingToast });
+      toast.error(
+        error instanceof Error ? error.message : "Profilni yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.",
+        { id: loadingToast }
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -110,21 +229,78 @@ export default function SettingsPage() {
     }
 
     try {
-      // In a real app, this would be an API call to change the password
-      // await changePassword(passwordForm);
+      let token = localStorage.getItem("access_token");
+      if (!token) {
+        throw new Error("Tizimga qayta kiring, token topilmadi.");
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch("http://localhost:8000/api/v1/user/change_password/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          current_password: passwordForm.currentPassword,
+          new_password: passwordForm.newPassword,
+        }),
+      });
 
+      if (response.status === 401) {
+        try {
+          token = await refreshAccessToken();
+          const retryResponse = await fetch("http://localhost:8000/api/v1/user/change_password/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              current_password: passwordForm.currentPassword,
+              new_password: passwordForm.newPassword,
+            }),
+          });
+
+          if (!retryResponse.ok) {
+            const errorData = await retryResponse.json();
+            throw new Error(errorData.error || "Parolni o'zgartirishda xato yuz berdi.");
+          }
+        } catch (refreshError) {
+          toast.error("Sessiya tugadi. Iltimos, qayta kiring.", { id: loadingToast });
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          setUser(null);
+          router.push("/login");
+          return;
+        }
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Parolni o'zgartirishda xato yuz berdi.");
+      }
+
+      // Clear the form
       setPasswordForm({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
-      toast.success("Parol muvaffaqiyatli o'zgartirildi", { id: loadingToast });
+
+      // Update cookies with new tokens from response
+      const data = await response.json();
+      document.cookie = `refresh=${data.refresh}; max-age=${60 * 60 * 24 * 365}; path=/`;
+      document.cookie = `access=${data.access}; max-age=${60 * 60 * 24 * 365}; path=/`;
+      localStorage.setItem("access_token", data.access);
+      localStorage.setItem("refresh_token", data.refresh);
+
+      toast.success("Parol muvaffaqiyatli o'zgartirildi.", { id: loadingToast });
     } catch (error) {
       console.error("Parolni o'zgartirishda xato:", error);
-      toast.error("Parolni o'zgartirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.", { id: loadingToast });
+      toast.error(
+        error instanceof Error ? error.message : "Parolni o'zgartirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.",
+        { id: loadingToast }
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -136,9 +312,6 @@ export default function SettingsPage() {
     const loadingToast = toast.loading("Bildirishnoma sozlamalari yangilanmoqda...");
 
     try {
-      // In a real app, this would be an API call to update notification settings
-      // await updateNotificationSettings(notificationSettings);
-
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -159,16 +332,13 @@ export default function SettingsPage() {
     const loadingToast = toast.loading("Tashqi ko'rinish sozlamalari yangilanmoqda...");
 
     try {
-      // In a real app, this would be an API call to update appearance settings
-      // await updateAppearanceSettings(appearanceSettings);
-
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      toast.success("Tashqi ko'rinish sozlamalari muvaffaqiyatli yangilandi", { id: loadingToast });
+      toast.success("Tashxi ko'rinish sozlamalari muvaffaqiyatli yangilandi", { id: loadingToast });
     } catch (error) {
-      console.error("Tashqi ko'rinish sozlamalarini yangilashda xato:", error);
-      toast.error("Tashqi ko'rinish sozlamalarini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
+      console.error("Tashxi ko'rinish sozlamalarini yangilashda xato:", error);
+      toast.error("Tashxi ko'rinish sozlamalarini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
         id: loadingToast,
       });
     } finally {
@@ -231,7 +401,7 @@ export default function SettingsPage() {
             </TabsTrigger>
             <TabsTrigger value="appearance">
               <Sun className="mr-2 h-4 w-4" />
-              Tashqi ko'rinish
+              Tashxi ko'rinish
             </TabsTrigger>
           </TabsList>
 
@@ -417,7 +587,7 @@ export default function SettingsPage() {
             <Card>
               <form onSubmit={handleAppearanceSubmit}>
                 <CardHeader>
-                  <CardTitle>Tashqi ko'rinish</CardTitle>
+                  <CardTitle>Tashxi ko'rinish</CardTitle>
                   <CardDescription>Interfeys afzalliklarini sozlang</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
