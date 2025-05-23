@@ -166,9 +166,9 @@ export async function clientApproveAnnouncement(id: number) {
   });
 }
 
-export async function uploadAnnouncementImages(formData: FormData, token: string | null = null) {
-  return fetchWithFormData("/application/announcements-image/", formData, token);
-}
+// export async function uploadAnnouncementImages(formData: FormData, token: string | null = null) {
+//   return fetchWithFormData("/application/announcements-image/", formData, token);
+// }
 
 // Orders API calls
 export async function fetchOrders(search?: string, ordering?: string) {

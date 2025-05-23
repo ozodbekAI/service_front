@@ -22,7 +22,7 @@ import {
   clientRejectAnnouncement,
   deleteAnnouncement,
   fetchProducts,
-  uploadAnnouncementImages,
+  uuploadAnnouncementImages,
 } from "@/lib/api";
 
 interface Announcement {
@@ -125,7 +125,7 @@ export default function AnnouncementDetailPage() {
 
     const loadingToast = toast.loading("Rasm yuklanmoqda...");
     try {
-      await uploadAnnouncementImages(formData);
+      await uuploadAnnouncementImages(formData);
       const updatedAnnouncement = await fetchAnnouncement(Number(id));
       setAnnouncement(updatedAnnouncement);
       setImageFile(null);

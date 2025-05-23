@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Monitor, Cpu, Settings, Users, User, Briefcase, MapPin, Wrench, FileText, Phone, Mail, Image } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { Toaster, toast } from "react-hot-toast";
-import { uploadAnnouncementImages, uuploadAnnouncementImages } from "@/lib/api"; 
+import { uuploadAnnouncementImages } from "@/lib/api"; 
 
 export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
