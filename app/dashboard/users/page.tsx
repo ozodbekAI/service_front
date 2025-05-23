@@ -167,12 +167,6 @@ export default function UsersPage() {
             <h1 className="text-3xl font-bold tracking-tight">Foydalanuvchilar</h1>
             <p className="text-muted-foreground">Tizim foydalanuvchilari va ularning rollarini boshqarish</p>
           </div>
-          <Link href="/dashboard/users/new">
-            <Button>
-              <UserPlus className="mr-2 h-4 w-4" />
-              Foydalanuvchi qo'shish
-            </Button>
-          </Link>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
