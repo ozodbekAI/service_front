@@ -103,8 +103,8 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="fullname">F.I.SH</Label>
                 <Input
-                  id="fullname"
-                  name="fullname"
+                  id="username"
+                  name="username"
                   value={formData.username}
                   onChange={handleChange}
                   required

@@ -1,7 +1,7 @@
 // lib/api.ts
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pc.ustaxona.bazarchi.software/api/v1"; // http://104.248.12.204:8000/
+// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"; // http://104.248.12.204:8000/
 
-// const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://pc.ustaxona.bazarchi.software/api/v1";
 
 // Helper function to get the auth token
 const getToken = () => {

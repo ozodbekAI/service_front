@@ -282,7 +282,7 @@ export default function OrderDetailPage() {
   }
 
   // Permission checks after confirming order is not null
-  const isOwner = user?.id === order.client.id;
+  const isOwner = user?.id === order.client?.id;
   const isAdmin = user?.role === "admin";
   const isManager = user?.role === "manager";
   const isManagerOrAdmin = isManager || isAdmin;
@@ -383,12 +383,12 @@ export default function OrderDetailPage() {
                     <User className="h-4 w-4 mr-2 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Mijoz</p>
-                      <p className="text-sm text-muted-foreground">{order.client.username}</p>
+                      <p className="text-sm text-muted-foreground">{order.client?.username}</p>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <p className="text-sm font-medium">Aloqa email</p>
-                    <p className="text-sm text-muted-foreground ml-2">{order.client.email}</p>
+                    <p className="text-sm text-muted-foreground ml-2">{order.client?.email}</p>
                   </div>
                   {order.manager && (
                     <>
@@ -397,7 +397,7 @@ export default function OrderDetailPage() {
                         <User className="h-4 w-4 mr-2 text-muted-foreground" />
                         <div>
                           <p className="text-sm font-medium">Menejer</p>
-                          <p className="text-sm text-muted-foreground">{order.manager.username}</p>
+                          <p className="text-sm text-muted-foreground">{order.manager?.username}</p>
                         </div>
                       </div>
                     </>
