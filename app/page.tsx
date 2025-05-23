@@ -19,8 +19,8 @@ export default function Home() {
     phone: "",
     email: "",
   });
-  const [images, setImages] = useState<File[]>([]); // Store selected images
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]); // Store image previews
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const clientTypeRef = useRef<HTMLSelectElement>(null);
@@ -65,7 +65,6 @@ export default function Home() {
     const newImages = [...images, ...files];
     setImages(newImages);
 
-    // Generate previews for the selected images
     const previews = files.map((file) => URL.createObjectURL(file));
     setImagePreviews((prev) => [...prev, ...previews]);
   };
@@ -78,141 +77,163 @@ export default function Home() {
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setIsLoading(true);
+    e.preventDefault();
+    setIsLoading(true);
 
-  const payload = {
-    fullname: formData.fullName,
-    email: formData.email,
-    phone: formData.phone,
-    is_legal: formData.clientType === "legal",
-    company_name: formData.clientType === "legal" ? formData.companyName : undefined,
-    announcement: {
-      title: `Buyurtma: ${formData.serviceType === "hardware" ? "Uskuna" : "Dasturiy ta'minot"} - ${formData.fullName}`,
-      description: formData.description,
-      district: formData.district,
-      service_type: formData.serviceType,
-    },
-  };
-
-  try {
-    const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/register_and_announce/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const payload = {
+      fullname: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      is_legal: formData.clientType === "legal",
+      company_name: formData.clientType === "legal" ? formData.companyName : undefined,
+      announcement: {
+        title: `Buyurtma: ${formData.serviceType === "hardware" ? "Uskuna" : "Dasturiy ta'minot"} - ${formData.fullName}`,
+        description: formData.description,
+        district: formData.district,
+        service_type: formData.serviceType,
       },
-      body: JSON.stringify(payload),
-    });
+    };
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Xatolik yuz berdi. Iltimos, qayta urinib ko‘ring.");
-    }
-
-    const responseData = await response.json();
-    const announcementId = responseData.announcement?.id;
-    const accessToken = responseData.access_token || null;
-
-    if (!announcementId) {
-      throw new Error("Announcement ID not returned from server.");
-    }
-
-    if (accessToken) {
-      localStorage.setItem("access_token", accessToken);
-      if (responseData.refresh_token) {
-        localStorage.setItem("refresh_token", responseData.refresh_token);
-      }
-    }
-
-    if (images.length > 0) {
-      const formDataImages = new FormData();
-      images.forEach((image) => {
-        formDataImages.append("image", image);
+    try {
+      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/register_and_announce/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
-      formDataImages.append("announcement_id", announcementId); // Changed from "announcement" to "announcement_id"
-      await uuploadAnnouncementImages(formDataImages, accessToken);
-    }
 
-    toast.success("Ro‘yxatdan o‘tish va buyurtma muvaffaqiyatli! Parolingiz email orqali yuborildi.");
-    setIsFormOpen(false);
-    setFormData({
-      clientType: "individual",
-      fullName: "",
-      companyName: "",
-      district: "",
-      serviceType: "hardware",
-      description: "",
-      phone: "",
-      email: "",
-    });
-    setImages([]);
-    setImagePreviews([]);
-  } catch (error) {
-    toast.error(
-      typeof error === "object" && error !== null && "message" in error
-        ? (error as { message?: string }).message || "Server bilan bog‘lanishda xatolik yuz berdi."
-        : "Server bilan bog‘lanishda xatolik yuz berdi."
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Xatolik yuz berdi. Iltimos, qayta urinib ko'ring.");
+      }
+
+      const responseData = await response.json();
+      const announcementId = responseData.announcement?.id;
+      const accessToken = responseData.access_token || null;
+
+      if (!announcementId) {
+        throw new Error("Announcement ID not returned from server.");
+      }
+
+      if (accessToken) {
+        localStorage.setItem("access_token", accessToken);
+        if (responseData.refresh_token) {
+          localStorage.setItem("refresh_token", responseData.refresh_token);
+        }
+      }
+
+      if (images.length > 0) {
+        const formDataImages = new FormData();
+        images.forEach((image) => {
+          formDataImages.append("image", image);
+        });
+        formDataImages.append("announcement_id", announcementId);
+        await uuploadAnnouncementImages(formDataImages, accessToken);
+      }
+
+      toast.success("Ro'yxatdan o'tish va buyurtma muvaffaqiyatli! Parolingiz email orqali yuborildi.");
+      setIsFormOpen(false);
+      setFormData({
+        clientType: "individual",
+        fullName: "",
+        companyName: "",
+        district: "",
+        serviceType: "hardware",
+        description: "",
+        phone: "",
+        email: "",
+      });
+      setImages([]);
+      setImagePreviews([]);
+    } catch (error) {
+      toast.error(
+        typeof error === "object" && error !== null && "message" in error
+          ? (error as { message?: string }).message || "Server bilan bog'lanishda xatolik yuz berdi."
+          : "Server bilan bog'lanishda xatolik yuz berdi."
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
       <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Monitor className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">KompXizmat</span>
-          </div>
-          <div className="space-x-4">
-            <Link href="/login">
-              <Button variant="outline">Tizimga kirish</Button>
-            </Link>
-            <Link href="/register">
-              <Button>Ro‘yxatdan o‘tish</Button>
-            </Link>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Monitor className="h-6 w-6 text-primary" />
+              <span className="text-xl font-bold">KompXizmat</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 w-full sm:w-auto">
+              <Link href="/login" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Tizimga kirish</Button>
+              </Link>
+              <Link href="/register" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Ro'yxatdan o'tish</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="flex-1">
-        
+        {/* Hero Section - Fixed */}
         <section 
-          className="bg-gradient-to-r from-primary/10 to-primary/5 py-20 bg-cover bg-center relative" 
+          className="relative bg-gradient-to-r from-primary/10 to-primary/5 py-20 min-h-[600px] flex items-center" 
           style={{ 
-            backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('/back3.jpg')",
+            backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('/back3.jpg')",
             backgroundSize: 'cover',
-            backgroundPosition: 'center' 
+            backgroundPosition: 'center',
+            backgroundAttachment: 'fixed'
           }}
         >
-          
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto text-center">
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">Professional Kompyuter Ta'mirlash va Xizmat</h1>
-              <p className="text-xl text-white  mb-8  ">
-                Barcha texnologik ehtiyojlaringiz uchun tez va ishonchli kompyuter ta'mirlash xizmatlari. Mutaxassislarimiz bugun sizga yordam berishga tayyor.
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="max-w-4xl mx-auto text-center">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+                Professional Kompyuter Ta'mirlash va Xizmat
+              </h1>
+              <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-10 max-w-3xl mx-auto leading-relaxed">
+                Barcha texnologik ehtiyojlaringiz uchun tez va ishonchli kompyuter ta'mirlash xizmatlari. 
+                Mutaxassislarimiz bugun sizga yordam berishga tayyor.
               </p>
-              <Button size="lg" className="mr-4" onClick={() => setIsFormOpen(true)} disabled={isLoading}>
-                Buyurtma berish
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Link href="/login">
-                <Button size="lg" variant="outline">
-                  Tizimga kirish
+              
+              {/* Fixed Button Layout */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                <Button 
+                  size="lg" 
+                  className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  onClick={() => setIsFormOpen(true)} 
+                  disabled={isLoading}
+                >
+                  Buyurtma berish
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-              </Link>
+                <Link href="/login">
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-white/10 backdrop-blur-sm border-white/30 text-white hover:bg-white/20 hover:border-white/50 transition-all duration-300"
+                  >
+                    Tizimga kirish
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
+          
+          {/* Decorative overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
         </section>
 
+        {/* Modal remains the same */}
         {isFormOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Buyurtma berish</h2>
               <form onSubmit={handleSubmit}>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-2 text-gray-700 flex items-center">
                       <User className="h-5 w-5 mr-2 text-primary" />
@@ -245,7 +266,7 @@ export default function Home() {
                     />
                   </div>
                   {formData.clientType === "legal" && (
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="block text-sm font-medium mb-2 text-gray-700 flex items-center">
                         <Briefcase className="h-5 w-5 mr-2 text-primary" />
                         Kompaniya nomi
@@ -318,7 +339,7 @@ export default function Home() {
                       required
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium mb-2 text-gray-700 flex items-center">
                       <FileText className="h-5 w-5 mr-2 text-primary" />
                       Muammo tavsifi
@@ -332,7 +353,7 @@ export default function Home() {
                       required
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium mb-2 text-gray-700 flex items-center">
                       <Image className="h-5 w-5 mr-2 text-primary" />
                       Rasmlar (maksimum 3 ta)
@@ -356,7 +377,7 @@ export default function Home() {
                             <button
                               type="button"
                               onClick={() => removeImage(index)}
-                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                              className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 transition-colors"
                             >
                               ×
                             </button>
@@ -366,7 +387,7 @@ export default function Home() {
                     )}
                   </div>
                 </div>
-                <div className="mt-6 flex justify-end space-x-3">
+                <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
                   <button
                     type="button"
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-50"
@@ -388,25 +409,26 @@ export default function Home() {
           </div>
         )}
 
+        {/* Services Section */}
         <section className="py-16">
           <div className="container mx-auto px-4">
             <h2 className="text-3xl font-bold text-center mb-12">Bizning Xizmatlarimiz</h2>
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="bg-card p-6 rounded-lg shadow-sm border">
+              <div className="bg-card p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <div className="mb-4 bg-primary/10 p-3 rounded-full w-fit">
                   <Cpu className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Uskuna Ta'mirlash</h3>
                 <p className="text-muted-foreground">Barcha kompyuter uskuna muammolari uchun mutaxassis tashxisi va ta'mirlash.</p>
               </div>
-              <div className="bg-card p-6 rounded-lg shadow-sm border">
+              <div className="bg-card p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <div className="mb-4 bg-primary/10 p-3 rounded-full w-fit">
                   <Settings className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold mb-2">Dasturiy Yechimlar</h3>
                 <p className="text-muted-foreground">Dasturiy ta'minot o'rnatish, yangilash va nosozliklarni bartaraf etish xizmatlari.</p>
               </div>
-              <div className="bg-card p-6 rounded-lg shadow-sm border">
+              <div className="bg-card p-6 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
                 <div className="mb-4 bg-primary/10 p-3 rounded-full w-fit">
                   <Users className="h-6 w-6 text-primary" />
                 </div>
@@ -417,6 +439,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* CTA Section */}
         <section className="bg-primary text-primary-foreground py-16">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl font-bold mb-6">Kompyuteringiz muammolarini hal qilishga tayyormisiz?</h2>
@@ -425,13 +448,14 @@ export default function Home() {
             </p>
             <Link href="/register">
               <Button size="lg" variant="secondary" className="font-semibold">
-                Hozir Ro‘yxatdan O‘tish
+                Hozir Ro'yxatdan O'tish
               </Button>
             </Link>
           </div>
         </section>
       </main>
 
+      {/* Footer */}
       <footer className="bg-muted py-8">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-center">
