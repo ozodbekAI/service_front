@@ -18,8 +18,10 @@ interface User {
   username: string
   email: string
   phone: string
-  role: "user" | "manager" | "admin"
-  date_joined: string
+  role: "client" | "manager" | "admin"  // API dan kelayotgan rol nomi
+  date_joined?: string
+  company_name?: string | null
+  is_legal?: boolean
 }
 
 export default function UsersPage() {
@@ -52,69 +54,16 @@ export default function UsersPage() {
     }
   }, [user])
 
-  // Namuna ma'lumotlar uchun
-  useEffect(() => {
-    if (isLoading && users.length === 0) {
-      // Namuna ma'lumotlar
-      const mockUsers: User[] = [
-        {
-          id: 1,
-          username: "admin_user",
-          email: "admin@example.com",
-          phone: "+998901234567",
-          role: "admin",
-          date_joined: "2023-01-01T10:00:00Z",
-        },
-        {
-          id: 2,
-          username: "manager_user",
-          email: "manager@example.com",
-          phone: "+998901234568",
-          role: "manager",
-          date_joined: "2023-02-15T14:30:00Z",
-        },
-        {
-          id: 3,
-          username: "john_doe",
-          email: "john@example.com",
-          phone: "+998901234569",
-          role: "user",
-          date_joined: "2023-03-10T09:15:00Z",
-        },
-        {
-          id: 4,
-          username: "jane_smith",
-          email: "jane@example.com",
-          phone: "+998901234570",
-          role: "user",
-          date_joined: "2023-04-05T11:45:00Z",
-        },
-        {
-          id: 5,
-          username: "alex_jones",
-          email: "alex@example.com",
-          phone: "+998901234571",
-          role: "user",
-          date_joined: "2023-05-20T16:20:00Z",
-        },
-      ]
-
-      setUsers(mockUsers)
-      setFilteredUsers(mockUsers)
-      setIsLoading(false)
-    }
-  }, [isLoading, users.length])
-
-  // Filtrlash va saralashni qo‘llash
+  // Filtrlash va saralashni qo'llash
   useEffect(() => {
     let result = [...users]
 
-    // Rol bo‘yicha filtr
+    // Rol bo'yicha filtr
     if (roleFilter !== "all") {
       result = result.filter((user) => user.role === roleFilter)
     }
 
-    // Qidiruv bo‘yicha filtr
+    // Qidiruv bo'yicha filtr
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(
@@ -131,9 +80,9 @@ export default function UsersPage() {
         return a.username.localeCompare(b.username)
       } else if (sortOrder === "username-desc") {
         return b.username.localeCompare(a.username)
-      } else if (sortOrder === "date-asc") {
+      } else if (sortOrder === "date-asc" && a.date_joined && b.date_joined) {
         return new Date(a.date_joined).getTime() - new Date(b.date_joined).getTime()
-      } else if (sortOrder === "date-desc") {
+      } else if (sortOrder === "date-desc" && a.date_joined && b.date_joined) {
         return new Date(b.date_joined).getTime() - new Date(a.date_joined).getTime()
       }
       return 0
@@ -149,18 +98,18 @@ export default function UsersPage() {
       toast.success("Foydalanuvchi muvaffaqiyatli menejer qilindi!")
     } catch (error) {
       console.error("Failed to make user a manager:", error)
-      toast.error("Foydalanuvchi rolini yangilashda xato yuz berdi. Iltimos, qayta urinib ko‘ring.")
+      toast.error("Foydalanuvchi rolini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.")
     }
   }
 
   const handleRemoveManager = async (userId: number) => {
     try {
       await removeUserManager(userId)
-      setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? { ...u, role: "user" } : u)))
+      setUsers((prevUsers) => prevUsers.map((u) => (u.id === userId ? { ...u, role: "client" } : u)))
       toast.success("Menejerlik roli muvaffaqiyatli olib tashlandi!")
     } catch (error) {
       console.error("Failed to remove manager role:", error)
-      toast.error("Foydalanuvchi rolini yangilashda xato yuz berdi. Iltimos, qayta urinib ko‘ring.")
+      toast.error("Foydalanuvchi rolini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.")
     }
   }
 
@@ -180,7 +129,7 @@ export default function UsersPage() {
             Menejer
           </Badge>
         )
-      case "user":
+      case "client":
         return (
           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
             <UserIcon className="mr-1 h-3 w-3" />
@@ -199,7 +148,7 @@ export default function UsersPage() {
         <div className="flex items-center justify-center h-[calc(100vh-200px)]">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-2">Kirish taqiqlangan</h1>
-            <p className="text-muted-foreground mb-4">Sizda ushbu sahifani ko‘rish uchun ruxsat yo‘q.</p>
+            <p className="text-muted-foreground mb-4">Sizda ushbu sahifani ko'rish uchun ruxsat yo'q.</p>
             <Link href="/dashboard">
               <Button>Boshqaruv paneliga qaytish</Button>
             </Link>
@@ -221,7 +170,7 @@ export default function UsersPage() {
           <Link href="/dashboard/users/new">
             <Button>
               <UserPlus className="mr-2 h-4 w-4" />
-              Foydalanuvchi qo‘shish
+              Foydalanuvchi qo'shish
             </Button>
           </Link>
         </div>
@@ -246,7 +195,7 @@ export default function UsersPage() {
                 <SelectItem value="all">Barcha rollar</SelectItem>
                 <SelectItem value="admin">Adminlar</SelectItem>
                 <SelectItem value="manager">Menejerlar</SelectItem>
-                <SelectItem value="user">Mijozlar</SelectItem>
+                <SelectItem value="client">Mijozlar</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortOrder} onValueChange={setSortOrder}>
@@ -267,7 +216,7 @@ export default function UsersPage() {
         <Card>
           <CardHeader>
             <CardTitle>Foydalanuvchilarni boshqarish</CardTitle>
-            <CardDescription>Barcha tizim foydalanuvchilarini ko‘rish va boshqarish</CardDescription>
+            <CardDescription>Barcha tizim foydalanuvchilarini ko'rish va boshqarish</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -282,7 +231,7 @@ export default function UsersPage() {
                       <th className="text-left py-3 px-2">Foydalanuvchi nomi</th>
                       <th className="text-left py-3 px-2">Aloqa</th>
                       <th className="text-left py-3 px-2">Rol</th>
-                      <th className="text-left py-3 px-2">Qo‘shilgan sana</th>
+                      <th className="text-left py-3 px-2">Qo'shilgan sana</th>
                       <th className="text-right py-3 px-2">Amallar</th>
                     </tr>
                   </thead>
@@ -298,13 +247,18 @@ export default function UsersPage() {
                         </td>
                         <td className="py-3 px-2">{getRoleBadge(user.role)}</td>
                         <td className="py-3 px-2">
-                          <div className="text-sm">{new Date(user.date_joined).toLocaleDateString("uz-UZ")}</div>
+                          <div className="text-sm">
+                            {user.date_joined 
+                              ? new Date(user.date_joined).toLocaleDateString("uz-UZ")
+                              : "Ma'lumot yo'q"
+                            }
+                          </div>
                         </td>
                         <td className="py-3 px-2 text-right">
                           <div className="flex justify-end space-x-2">
                             {user.role !== "admin" && (
                               <>
-                                {user.role === "user" ? (
+                                {user.role === "client" ? (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -314,7 +268,7 @@ export default function UsersPage() {
                                     <UserCheck className="mr-1 h-4 w-4" />
                                     Menejer qilish
                                   </Button>
-                                ) : (
+                                ) : user.role === "manager" ? (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -324,7 +278,7 @@ export default function UsersPage() {
                                     <UserX className="mr-1 h-4 w-4" />
                                     Menejerlikni olib tashlash
                                   </Button>
-                                )}
+                                ) : null}
                               </>
                             )}
                           </div>
