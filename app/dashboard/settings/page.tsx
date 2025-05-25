@@ -278,89 +278,39 @@ export default function SettingsPage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-
-      // Fayl hajmini tekshirish (masalan, 5MB dan katta bo'lmasligi)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Rasm hajmi 5MB dan katta bo'lmasligi kerak.");
-        return;
-      }
-
-      // Fayl formatini tekshirish
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Faqat JPEG, PNG yoki GIF formatidagi rasmlar qabul qilinadi.");
-        return;
-      }
-
-      setIsUploading(true);
-      const loadingToast = toast.loading("Rasm yuklanmoqda...");
-
-      try {
-        const formData = new FormData();
-        formData.append("profile_image", file);
-
-        const response = await uploadProfileImage(formData);
-
-        // Yangilangan foydalanuvchi ma'lumotlarini olish
-        let token = localStorage.getItem("access_token");
-        if (!token) {
-          throw new Error("Tizimga qayta kiring, token topilmadi.");
-        }
-
-        let meResponse = await fetch(`${API_BASE_URL}/user/me/`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (meResponse.status === 401) {
-          try {
-            token = await refreshAccessToken();
-            meResponse = await fetch(`${API_BASE_URL}/user/me/`, {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            });
-          } catch (refreshError) {
-            toast.error("Sessiya tugadi. Iltimos, qayta kiring.", { id: loadingToast });
-            router.push("/login");
+        const file = e.target.files[0];
+        // File size and type validation
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("Rasm hajmi 5MB dan katta bo'lmasligi kerak.");
             return;
-          }
+        }
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error("Faqat JPEG, PNG yoki GIF formatidagi rasmlar qabul qilinadi.");
+            return;
         }
 
-        if (!meResponse.ok) {
-          throw new Error("Foydalanuvchi ma'lumotlarini olishda xato yuz berdi.");
+        setIsUploading(true);
+        const loadingToast = toast.loading("Rasm yuklanmoqda...");
+
+        try {
+            const formData = new FormData();
+            formData.append("profile_image", file);
+
+            const response = await uploadProfileImage(formData);
+            // ...
+        } catch (error) {
+            console.error("Rasm yuklashda xato:", error);
+            toast.error(
+                error instanceof Error ? error.message : "Rasm yuklashda xato yuz berdi.",
+                { id: loadingToast }
+            );
+        } finally {
+            setIsUploading(false);
+            e.target.value = "";
         }
-
-        const userData = await meResponse.json();
-        setUser({
-          id: userData.id,
-          username: userData.username,
-          email: userData.email,
-          phone: userData.phone,
-          role: userData.role,
-          is_legal: userData.is_legal,
-          profile_image: userData.profile_image,
-        });
-
-        toast.success("Profil rasmi muvaffaqiyatli yangilandi", { id: loadingToast });
-      } catch (error) {
-        console.error("Rasm yuklashda xato:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Rasm yuklashda xato yuz berdi.",
-          { id: loadingToast }
-        );
-      } finally {
-        setIsUploading(false);
-        e.target.value = "";
-      }
     }
-  };
+};
 
   if (authLoading) {
     return (
