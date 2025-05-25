@@ -33,12 +33,21 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
+  const { name, value, type } = e.target;
+
+  if (name === "is_legal") {
+    // `select` elementidan kelayotgan qiymatni boolean ga aylantiramiz
+    setFormData((prev) => ({
+      ...prev,
+      is_legal: value === "legal", // "legal" bo'lsa true, aks holda false
+    }));
+  } else {
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     }));
-  };
+  }
+};
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
