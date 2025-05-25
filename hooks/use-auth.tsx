@@ -9,6 +9,7 @@ interface User {
   phone: string
   role: "client" | "manager" | "admin"
   is_legal: boolean
+  profile_picture?: string
 }
 
 interface AuthContextType {
