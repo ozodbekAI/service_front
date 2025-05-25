@@ -12,7 +12,7 @@ import { ArrowLeft, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { createAnnouncement, uploadAnnouncementImages } from "@/lib/api";
+import { createAnnouncement, uuploadAnnouncementImages } from "@/lib/api";
 
 interface AnnouncementFormData {
   title: string;
@@ -76,7 +76,7 @@ export default function NewAnnouncementPage() {
           formDataImages.append("image", image);
           formDataImages.append("announcement_id", newAnnouncement.id.toString());
         });
-        await uploadAnnouncementImages(formDataImages);
+        await uuploadAnnouncementImages(formDataImages);
       }
 
       toast.success("E'lon muvaffaqiyatli yaratildi!", { id: loadingToast });
