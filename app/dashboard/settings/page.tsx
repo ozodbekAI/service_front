@@ -90,7 +90,7 @@ export default function SettingsPage() {
         throw new Error("Tizimga qayta kiring, token topilmadi.");
       }
 
-      let updateResponse = await fetch(`${API_BASE_URL}/users/update_profile/`, {
+      let updateResponse = await fetch(`${API_BASE_URL}/user/update_profile/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function SettingsPage() {
       if (updateResponse.status === 401) {
         try {
           token = await refreshAccessToken();
-          updateResponse = await fetch(`${API_BASE_URL}/users/update_profile/`, {
+          updateResponse = await fetch(`${API_BASE_URL}/user/update_profile/`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
