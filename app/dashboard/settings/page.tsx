@@ -395,14 +395,6 @@ export default function SettingsPage() {
               <Lock className="mr-2 h-4 w-4" />
               Parol
             </TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="mr-2 h-4 w-4" />
-              Bildirishnomalar
-            </TabsTrigger>
-            <TabsTrigger value="appearance">
-              <Sun className="mr-2 h-4 w-4" />
-              Tashxi ko'rinish
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile">
@@ -518,111 +510,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notifications">
-            <Card>
-              <form onSubmit={handleNotificationsSubmit}>
-                <CardHeader>
-                  <CardTitle>Bildirishnomalar</CardTitle>
-                  <CardDescription>Bildirishnoma afzalliklarini boshqaring</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="emailNotifications">Elektron pochta bildirishnomalari</Label>
-                      <p className="text-sm text-muted-foreground">Elektron pochta orqali bildirishnomalar olish</p>
-                    </div>
-                    <Switch
-                      id="emailNotifications"
-                      checked={notificationSettings.emailNotifications}
-                      onCheckedChange={() => handleNotificationToggle("emailNotifications")}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="orderUpdates">Buyurtma yangilanishlari</Label>
-                      <p className="text-sm text-muted-foreground">Buyurtma holati o'zgarishlari haqida xabar olish</p>
-                    </div>
-                    <Switch
-                      id="orderUpdates"
-                      checked={notificationSettings.orderUpdates}
-                      onCheckedChange={() => handleNotificationToggle("orderUpdates")}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="systemAnnouncements">Tizim e'lonlari</Label>
-                      <p className="text-sm text-muted-foreground">Muhim tizim e'lonlarini olish</p>
-                    </div>
-                    <Switch
-                      id="systemAnnouncements"
-                      checked={notificationSettings.systemAnnouncements}
-                      onCheckedChange={() => handleNotificationToggle("systemAnnouncements")}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="marketingEmails">Marketing elektron pochtalari</Label>
-                      <p className="text-sm text-muted-foreground">Reklama xatlari va takliflarni olish</p>
-                    </div>
-                    <Switch
-                      id="marketingEmails"
-                      checked={notificationSettings.marketingEmails}
-                      onCheckedChange={() => handleNotificationToggle("marketingEmails")}
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saqlanmoqda..." : "Afzalliklarni saqlash"}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="appearance">
-            <Card>
-              <form onSubmit={handleAppearanceSubmit}>
-                <CardHeader>
-                  <CardTitle>Tashxi ko'rinish</CardTitle>
-                  <CardDescription>Interfeys afzalliklarini sozlang</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="darkMode">Qorong'i rejim</Label>
-                      <p className="text-sm text-muted-foreground">Interfeys uchun qorong'i mavzudan foydalaning</p>
-                    </div>
-                    <Switch
-                      id="darkMode"
-                      checked={appearanceSettings.darkMode}
-                      onCheckedChange={() => handleAppearanceToggle("darkMode")}
-                    />
-                  </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="compactView">Ixcham ko'rinish</Label>
-                      <p className="text-sm text-muted-foreground">Jadval va ro'yxatlar uchun ixcham tartibdan foydalaning</p>
-                    </div>
-                    <Switch
-                      id="compactView"
-                      checked={appearanceSettings.compactView}
-                      onCheckedChange={() => handleAppearanceToggle("compactView")}
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Saqlanmoqda..." : "Afzalliklarni saqlash"}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
