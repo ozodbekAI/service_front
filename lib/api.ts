@@ -358,5 +358,6 @@ export async function fetchUserGrowth() {
 }
 
 export async function uploadProfileImage(formData: FormData) {
-  return fetchWithFormData("/user/upload_profile_image/", formData);
+  const token = localStorage.getItem("access_token");
+  return fetchWithFormData("/user/upload_profile_image/", formData, token);
 }
