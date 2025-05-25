@@ -1,21 +1,21 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Bell, Sun, Upload } from "lucide-react";
+import { User, Lock, Upload } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { uploadProfileImage } from "@/lib/api";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -41,6 +41,8 @@ export default function SettingsPage() {
     compactView: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Initialize form with user data
   useEffect(() => {
@@ -84,7 +86,7 @@ export default function SettingsPage() {
       throw new Error("Refresh token topilmadi. Iltimos, qayta kiring.");
     }
 
-    const response = await fetch("http://localhost:8000/api/token/refresh/", {
+    const response = await fetch(`${API_BASE_URL}/token/refresh/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -113,14 +115,14 @@ export default function SettingsPage() {
       }
 
       // Step 1: Update the profile
-      let updateResponse = await fetch("http://localhost:8000/api/v1/user/update_profile/", {
+      let updateResponse = await fetch(`${API_BASE_URL}/users/update_profile/`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          username: profileForm.username, // Backend expects 'fullname'
+          username: profileForm.username,
           email: profileForm.email,
           phone: profileForm.phone,
         }),
@@ -130,8 +132,7 @@ export default function SettingsPage() {
       if (updateResponse.status === 401) {
         try {
           token = await refreshAccessToken();
-          // Token yangilangandan so'ng qayta urinib ko'ramiz
-          updateResponse = await fetch("http://localhost:8000/api/v1/user/update_profile/", {
+          updateResponse = await fetch(`${API_BASE_URL}/users/update_profile/`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -156,7 +157,7 @@ export default function SettingsPage() {
       }
 
       // Step 2: Fetch updated user data
-      let meResponse = await fetch("http://localhost:8000/api/v1/user/me/", {
+      let meResponse = await fetch(`${API_BASE_URL}/users/me/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -164,11 +165,10 @@ export default function SettingsPage() {
         },
       });
 
-      // Agar 401 xatosi bo'lsa, tokenni yangilashga urinamiz
       if (meResponse.status === 401) {
         try {
           token = await refreshAccessToken();
-          meResponse = await fetch("http://localhost:8000/api/v1/user/me/", {
+          meResponse = await fetch(`${API_BASE_URL}/users/me/`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -188,19 +188,18 @@ export default function SettingsPage() {
       }
 
       const updatedUser = await meResponse.json();
-      // Step 3: Update the auth context with the new user data
       setUser({
         id: updatedUser.id,
-        username: updatedUser.username, 
+        username: updatedUser.username,
         email: updatedUser.email,
         phone: updatedUser.phone,
         role: updatedUser.role,
-        is_legal: updatedUser.is_legal, // Add this line
+        is_legal: updatedUser.is_legal,
+        profile_image: updatedUser.profile_image,
       });
 
-      // Formani yangilangan ma'lumotlar bilan sinxronlashtirish
       setProfileForm({
-        username: updatedUser.fullname || "",
+        username: updatedUser.username || "",
         email: updatedUser.email || "",
         phone: updatedUser.phone || "",
       });
@@ -209,7 +208,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Profilni yangilashda xato:", error);
       toast.error(
-        error instanceof Error ? error.message : "Profilni yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.",
+        error instanceof Error ? error.message : "Profilni yangilashda xato yuz berdi.",
         { id: loadingToast }
       );
     } finally {
@@ -234,7 +233,7 @@ export default function SettingsPage() {
         throw new Error("Tizimga qayta kiring, token topilmadi.");
       }
 
-      const response = await fetch("http://localhost:8000/api/v1/user/change_password/", {
+      const response = await fetch(`${API_BASE_URL}/users/change_password/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -249,7 +248,7 @@ export default function SettingsPage() {
       if (response.status === 401) {
         try {
           token = await refreshAccessToken();
-          const retryResponse = await fetch("http://localhost:8000/api/v1/user/change_password/", {
+          const retryResponse = await fetch(`${API_BASE_URL}/users/change_password/`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -280,14 +279,12 @@ export default function SettingsPage() {
         throw new Error(errorData.error || "Parolni o'zgartirishda xato yuz berdi.");
       }
 
-      // Clear the form
       setPasswordForm({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
       });
 
-      // Update cookies with new tokens from response
       const data = await response.json();
       document.cookie = `refresh=${data.refresh}; max-age=${60 * 60 * 24 * 365}; path=/`;
       document.cookie = `access=${data.access}; max-age=${60 * 60 * 24 * 365}; path=/`;
@@ -298,7 +295,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error("Parolni o'zgartirishda xato:", error);
       toast.error(
-        error instanceof Error ? error.message : "Parolni o'zgartirishda xato yuz berdi. Iltimos, qayta urinib ko'ring.",
+        error instanceof Error ? error.message : "Parolni o'zgartirishda xato yuz berdi.",
         { id: loadingToast }
       );
     } finally {
@@ -306,43 +303,61 @@ export default function SettingsPage() {
     }
   };
 
-  const handleNotificationsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    const loadingToast = toast.loading("Bildirishnoma sozlamalari yangilanmoqda...");
+  const handleImageUpload = async () => {
+    if (!selectedFile) {
+      toast.error("Iltimos, rasm tanlang.");
+      return;
+    }
+
+    setIsUploading(true);
+    const loadingToast = toast.loading("Rasm yuklanmoqda...");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const formData = new FormData();
+      formData.append("profile_image", selectedFile);
 
-      toast.success("Bildirishnoma sozlamalari muvaffaqiyatli yangilandi", { id: loadingToast });
-    } catch (error) {
-      console.error("Bildirishnoma sozlamalarini yangilashda xato:", error);
-      toast.error("Bildirishnoma sozlamalarini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
-        id: loadingToast,
+      const response = await uploadProfileImage(formData);
+
+      // Yangilangan foydalanuvchi ma'lumotlarini olish
+      const updatedUser = await fetch(`${API_BASE_URL}/users/me/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
       });
+
+      if (!updatedUser.ok) {
+        throw new Error("Foydalanuvchi ma'lumotlarini olishda xato yuz berdi.");
+      }
+
+      const userData = await updatedUser.json();
+      setUser({
+        id: userData.id,
+        username: userData.username,
+        email: userData.email,
+        phone: userData.phone,
+        role: userData.role,
+        is_legal: userData.is_legal,
+        profile_image: userData.profile_image,
+      });
+
+      setSelectedFile(null);
+      toast.success("Profil rasmi muvaffaqiyatli yangilandi", { id: loadingToast });
+    } catch (error) {
+      console.error("Rasm yuklashda xato:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Rasm yuklashda xato yuz berdi.",
+        { id: loadingToast }
+      );
     } finally {
-      setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
-  const handleAppearanceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    const loadingToast = toast.loading("Tashqi ko'rinish sozlamalari yangilanmoqda...");
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success("Tashxi ko'rinish sozlamalari muvaffaqiyatli yangilandi", { id: loadingToast });
-    } catch (error) {
-      console.error("Tashxi ko'rinish sozlamalarini yangilashda xato:", error);
-      toast.error("Tashxi ko'rinish sozlamalarini yangilashda xato yuz berdi. Iltimos, qayta urinib ko'ring.", {
-        id: loadingToast,
-      });
-    } finally {
-      setIsSubmitting(false);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -407,13 +422,26 @@ export default function SettingsPage() {
                 <CardContent className="space-y-6">
                   <div className="flex flex-col items-center space-y-4">
                     <Avatar className="h-24 w-24">
-                      <AvatarImage src="/placeholder.svg" alt={user.username} />
+                      <AvatarImage src={user.profile_image || "/placeholder.svg"} alt={user.username} />
                       <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
                     </Avatar>
-                    <Button variant="outline" size="sm">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Avatar o'zgartirish
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="max-w-xs"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleImageUpload}
+                        disabled={isUploading || !selectedFile}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        {isUploading ? "Yuklanmoqda..." : "Avatar o'zgartirish"}
+                      </Button>
+                    </div>
                   </div>
 
                   <Separator />
@@ -509,7 +537,6 @@ export default function SettingsPage() {
               </form>
             </Card>
           </TabsContent>
-
         </Tabs>
       </div>
     </DashboardLayout>

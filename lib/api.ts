@@ -357,4 +357,6 @@ export async function fetchUserGrowth() {
   return fetchWithAuth("/application/dashboard/user_growth/");
 }
 
-
+export async function uploadProfileImage(formData: FormData) {
+  return fetchWithFormData("/users/upload_profile_image/", formData);
+}
