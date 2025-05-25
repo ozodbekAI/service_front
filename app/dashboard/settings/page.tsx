@@ -7,15 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Upload } from "lucide-react";
+import { User, Lock } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { uploadProfileImage } from "@/lib/api";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://pc.ustaxona.bazarchi.software/api/v1";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -30,19 +31,8 @@ export default function SettingsPage() {
     newPassword: "",
     confirmPassword: "",
   });
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    orderUpdates: true,
-    systemAnnouncements: true,
-    marketingEmails: false,
-  });
-  const [appearanceSettings, setAppearanceSettings] = useState({
-    darkMode: false,
-    compactView: false,
-  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Initialize form with user data
   useEffect(() => {
@@ -63,20 +53,6 @@ export default function SettingsPage() {
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setPasswordForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleNotificationToggle = (setting: string) => {
-    setNotificationSettings((prev) => ({
-      ...prev,
-      [setting]: !prev[setting as keyof typeof prev],
-    }));
-  };
-
-  const handleAppearanceToggle = (setting: string) => {
-    setAppearanceSettings((prev) => ({
-      ...prev,
-      [setting]: !prev[setting as keyof typeof prev],
-    }));
   };
 
   // Tokenni yangilash funksiyasi
@@ -114,7 +90,6 @@ export default function SettingsPage() {
         throw new Error("Tizimga qayta kiring, token topilmadi.");
       }
 
-      // Step 1: Update the profile
       let updateResponse = await fetch(`${API_BASE_URL}/users/update_profile/`, {
         method: "PUT",
         headers: {
@@ -128,7 +103,6 @@ export default function SettingsPage() {
         }),
       });
 
-      // Agar 401 xatosi bo'lsa, tokenni yangilashga urinamiz
       if (updateResponse.status === 401) {
         try {
           token = await refreshAccessToken();
@@ -156,7 +130,6 @@ export default function SettingsPage() {
         throw new Error(errorData.detail || "Profilni yangilashda xato yuz berdi.");
       }
 
-      // Step 2: Fetch updated user data
       let meResponse = await fetch(`${API_BASE_URL}/users/me/`, {
         method: "GET",
         headers: {
@@ -303,61 +276,90 @@ export default function SettingsPage() {
     }
   };
 
-  const handleImageUpload = async () => {
-    if (!selectedFile) {
-      toast.error("Iltimos, rasm tanlang.");
-      return;
-    }
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
 
-    setIsUploading(true);
-    const loadingToast = toast.loading("Rasm yuklanmoqda...");
-
-    try {
-      const formData = new FormData();
-      formData.append("profile_image", selectedFile);
-
-      const response = await uploadProfileImage(formData);
-
-      // Yangilangan foydalanuvchi ma'lumotlarini olish
-      const updatedUser = await fetch(`${API_BASE_URL}/users/me/`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      });
-
-      if (!updatedUser.ok) {
-        throw new Error("Foydalanuvchi ma'lumotlarini olishda xato yuz berdi.");
+      // Fayl hajmini tekshirish (masalan, 5MB dan katta bo'lmasligi)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Rasm hajmi 5MB dan katta bo'lmasligi kerak.");
+        return;
       }
 
-      const userData = await updatedUser.json();
-      setUser({
-        id: userData.id,
-        username: userData.username,
-        email: userData.email,
-        phone: userData.phone,
-        role: userData.role,
-        is_legal: userData.is_legal,
-        profile_image: userData.profile_image,
-      });
+      // Fayl formatini tekshirish
+      const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error("Faqat JPEG, PNG yoki GIF formatidagi rasmlar qabul qilinadi.");
+        return;
+      }
 
-      setSelectedFile(null);
-      toast.success("Profil rasmi muvaffaqiyatli yangilandi", { id: loadingToast });
-    } catch (error) {
-      console.error("Rasm yuklashda xato:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Rasm yuklashda xato yuz berdi.",
-        { id: loadingToast }
-      );
-    } finally {
-      setIsUploading(false);
-    }
-  };
+      setIsUploading(true);
+      const loadingToast = toast.loading("Rasm yuklanmoqda...");
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      try {
+        const formData = new FormData();
+        formData.append("profile_image", file);
+
+        const response = await uploadProfileImage(formData);
+
+        // Yangilangan foydalanuvchi ma'lumotlarini olish
+        let token = localStorage.getItem("access_token");
+        if (!token) {
+          throw new Error("Tizimga qayta kiring, token topilmadi.");
+        }
+
+        let meResponse = await fetch(`${API_BASE_URL}/users/me/`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (meResponse.status === 401) {
+          try {
+            token = await refreshAccessToken();
+            meResponse = await fetch(`${API_BASE_URL}/users/me/`, {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          } catch (refreshError) {
+            toast.error("Sessiya tugadi. Iltimos, qayta kiring.", { id: loadingToast });
+            router.push("/login");
+            return;
+          }
+        }
+
+        if (!meResponse.ok) {
+          throw new Error("Foydalanuvchi ma'lumotlarini olishda xato yuz berdi.");
+        }
+
+        const userData = await meResponse.json();
+        setUser({
+          id: userData.id,
+          username: userData.username,
+          email: userData.email,
+          phone: userData.phone,
+          role: userData.role,
+          is_legal: userData.is_legal,
+          profile_image: userData.profile_image,
+        });
+
+        toast.success("Profil rasmi muvaffaqiyatli yangilandi", { id: loadingToast });
+      } catch (error) {
+        console.error("Rasm yuklashda xato:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Rasm yuklashda xato yuz berdi.",
+          { id: loadingToast }
+        );
+      } finally {
+        setIsUploading(false);
+        // Input qiymatini tozalash uchun
+        e.target.value = "";
+      }
     }
   };
 
@@ -425,22 +427,17 @@ export default function SettingsPage() {
                       <AvatarImage src={user.profile_image || "/placeholder.svg"} alt={user.username} />
                       <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
                     </Avatar>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col items-center space-y-2">
+                      <Label htmlFor="profileImage">Yangi profil rasmini tanlang</Label>
                       <Input
+                        id="profileImage"
                         type="file"
                         accept="image/*"
                         onChange={handleFileChange}
                         className="max-w-xs"
+                        disabled={isUploading}
                       />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleImageUpload}
-                        disabled={isUploading || !selectedFile}
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        {isUploading ? "Yuklanmoqda..." : "Avatar o'zgartirish"}
-                      </Button>
+                      {isUploading && <p className="text-sm text-muted-foreground">Rasm yuklanmoqda...</p>}
                     </div>
                   </div>
 
@@ -472,7 +469,7 @@ export default function SettingsPage() {
                         id="phone"
                         name="phone"
                         type="tel"
-                        value={profileForm.phone}
+                        value={profileForm.username}
                         onChange={handleProfileChange}
                       />
                     </div>
