@@ -6,6 +6,8 @@ import { ArrowRight, Monitor, Cpu, Settings, Users, User, Briefcase, MapPin, Wre
 import { useState, useEffect, useRef } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { uuploadAnnouncementImages } from "@/lib/api"; 
+import { Checkbox } from "@/components/ui/checkbox"; // Checkbox komponentini import qilish
+import { Label } from "@/components/ui/label"; // Label komponentini import qilish
 
 export default function Home() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -22,6 +24,7 @@ export default function Home() {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false); // Checkbox holatini boshqarish
 
   const clientTypeRef = useRef<HTMLSelectElement>(null);
 
@@ -76,8 +79,18 @@ export default function Home() {
     setImagePreviews(newPreviews);
   };
 
+  const handlePrivacyChange = (checked: boolean) => {
+    setPrivacyAccepted(checked);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!privacyAccepted) {
+      toast.error("Iltimos, maxfiylik siyosati bilan rozilikni tasdiqlang!");
+      return;
+    }
+
     setIsLoading(true);
 
     const payload = {
@@ -91,6 +104,7 @@ export default function Home() {
         description: formData.description,
         district: formData.district,
         service_type: formData.serviceType,
+        privacy_accepted: privacyAccepted, // Backend uchun maxfiylik roziligi
       },
     };
 
@@ -146,6 +160,7 @@ export default function Home() {
       });
       setImages([]);
       setImagePreviews([]);
+      setPrivacyAccepted(false); // Checkboxni qayta tiklash
     } catch (error) {
       toast.error(
         typeof error === "object" && error !== null && "message" in error
@@ -179,7 +194,7 @@ export default function Home() {
       </header>
 
       <main className="flex-1">
-        {/* Hero Section - Fixed */}
+        {/* Hero Section */}
         <section 
           className="relative bg-gradient-to-r from-primary/10 to-primary/5 py-20 min-h-[600px] flex items-center" 
           style={{ 
@@ -198,8 +213,6 @@ export default function Home() {
                 Barcha texnologik ehtiyojlaringiz uchun tez va ishonchli kompyuter ta'mirlash xizmatlari. 
                 Mutaxassislarimiz bugun sizga yordam berishga tayyor.
               </p>
-              
-              {/* Fixed Button Layout */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <Button 
                   size="lg" 
@@ -222,12 +235,10 @@ export default function Home() {
               </div>
             </div>
           </div>
-          
-          {/* Decorative overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
         </section>
 
-        {/* Modal remains the same */}
+        {/* Modal (Buyurtma berish formasi) */}
         {isFormOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -386,6 +397,27 @@ export default function Home() {
                       </div>
                     )}
                   </div>
+                  {/* Maxfiylik siyosati uchun Checkbox */}
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="privacy-policy"
+                        checked={privacyAccepted}
+                        onCheckedChange={handlePrivacyChange}
+                      />
+                      <Label htmlFor="privacy-policy" className="text-sm text-gray-600">
+                        Men{" "}
+                        <Link
+                          href="/privacy-policy"
+                          className="text-blue-500 hover:underline"
+                          target="_blank"
+                        >
+                          maxfiylik siyosati
+                        </Link>{" "}
+                        va shaxsiy ma'lumotlarimni O‘zbekiston Respublikasining “Shaxsiy ma’lumotlarni himoya qilish to‘g‘risida”gi qonuni (№547, 2019-yil) hamda GDPR (Yevropa Ittifoqi, 2016/679) talablariga muvofiq qayta ishlashga roziman.
+                      </Label>
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
                   <button
@@ -398,7 +430,7 @@ export default function Home() {
                   </button>
                   <Button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || !privacyAccepted} // Checkbox belgilangan bo‘lsa faqat faol
                     className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all"
                   >
                     {isLoading ? "Yuborilmoqda..." : "Yuborish"}

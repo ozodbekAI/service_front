@@ -4,15 +4,13 @@ import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ClipboardList, Package, Users, CheckCircle, Clock, Plus, ArrowUpRight } from "lucide-react"
 import Link from "next/link"
 import DashboardLayout from "@/components/dashboard-layout"
 import { useAuth } from "@/hooks/use-auth"
-import toast from "react-hot-toast"
+import toast from "react-hot-toast" // react-hot-toast import
 import { fetchDashboardStats, fetchPendingOrders, fetchLowStockProducts } from "@/lib/api"
-import { Checkbox } from "@/components/ui/checkbox" // Checkbox komponentini import qilish
-import { Label } from "@/components/ui/label" // Label komponentini import qilish
 
 interface DashboardStats {
   total_clients: number
@@ -52,12 +50,11 @@ export default function DashboardPage() {
   const [pendingOrders, setPendingOrders] = useState<Order[]>([])
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [privacyAccepted, setPrivacyAccepted] = useState(false) // Checkbox holatini boshqarish
 
   useEffect(() => {
     const loadDashboardData = async () => {
       setIsLoading(true)
-      const loadingToast = toast.loading("Ma'lumotlar yuklanmoqda...")
+      const loadingToast = toast.loading("Ma'lumotlar yuklanmoqda...") // Loading toast
       try {
         if (user?.role === "admin" || user?.role === "manager") {
           const statsData = await fetchDashboardStats()
@@ -71,8 +68,9 @@ export default function DashboardPage() {
 
           toast.success("Boshqaruv paneli ma'lumotlari muvaffaqiyatli yuklandi!", {
             id: loadingToast,
-          })
+          }) // Success toast
         } else {
+          // Mijozlar uchun buyurtmalar olinadi (haqiqiy ilovada amalga oshiriladi)
           toast.success("Mijoz ma'lumotlari yuklandi!", {
             id: loadingToast,
           })
@@ -81,7 +79,7 @@ export default function DashboardPage() {
         console.error("Boshqaruv paneli ma'lumotlarini yuklashda xato:", error)
         toast.error("Ma'lumotlarni yuklashda xato yuz berdi.", {
           id: loadingToast,
-        })
+        }) // Error toast
       } finally {
         setIsLoading(false)
       }
@@ -92,7 +90,7 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  // Demo maqsadida placeholder ma'lumotlar
+  // Demo maqsadida, agar API chaqiruvlari amalga oshirilmagan bo'lsa, placeholder ma'lumotlardan foydalanamiz
   useEffect(() => {
     if (isLoading && !stats) {
       setStats({
@@ -153,28 +151,13 @@ export default function DashboardPage() {
       ])
 
       setIsLoading(false)
-      toast.success("Namunaviy ma'lumotlar yuklandi!")
+      toast.success("Namunaviy ma'lumotlar yuklandi!") // Success toast for placeholder data
     }
   }, [isLoading, stats])
 
   const isAdmin = user?.role === "admin"
   const isManager = user?.role === "manager" || isAdmin
   const isClient = user?.role === "client"
-
-  // Checkboxni boshqarish funksiyasi
-  const handlePrivacyChange = (checked: boolean) => {
-    setPrivacyAccepted(checked)
-  }
-
-  // Formani yuborish funksiyasi
-  const handleSubmit = () => {
-    if (!privacyAccepted) {
-      toast.error("Iltimos, maxfiylik siyosati bilan rozilikni tasdiqlang!")
-      return
-    }
-    // Buyurtma yuborish logikasi shu yerga qo'shiladi
-    toast.success("Buyurtma muvaffaqiyatli yuborildi!")
-  }
 
   return (
     <DashboardLayout>
@@ -255,36 +238,14 @@ export default function DashboardPage() {
                 <CardHeader>
                   <CardTitle>Tezkor amallar</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-2">
                   {isClient && (
-                    <div className="space-y-4">
-                      <Link href="/dashboard/announcements/new">
-                        <Button className="w-full" disabled={!privacyAccepted}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Yangi e'lon yaratish
-                        </Button>
-                      </Link>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="privacy-policy"
-                          checked={privacyAccepted}
-                          onCheckedChange={handlePrivacyChange}
-                        />
-                        <Label htmlFor="privacy-policy" className="text-sm text-muted-foreground">
-                          <span>
-                            Men{" "}
-                            <Link
-                              href="/privacy-policy"
-                              className="text-blue-500 hover:underline"
-                              target="_blank"
-                            >
-                              maxfiylik siyosati
-                            </Link>{" "}
-                            va shaxsiy ma'lumotlarimni O‘zbekiston Respublikasining “Shaxsiy ma’lumotlarni himoya qilish to‘g‘risida”gi qonuni (№547, 2019-yil) hamda GDPR (Yevropa Ittifoqi, 2016/679) talablariga muvofiq qayta ishlashga roziman.
-                          </span>
-                        </Label>
-                      </div>
-                    </div>
+                    <Link href="/dashboard/announcements/new">
+                      <Button className="w-full">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Yangi e'lon yaratish
+                      </Button>
+                    </Link>
                   )}
                   {(isAdmin || isManager) && (
                     <>
