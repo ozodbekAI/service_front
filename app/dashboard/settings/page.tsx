@@ -90,7 +90,7 @@ export default function SettingsPage() {
         throw new Error("Tizimga qayta kiring, token topilmadi.");
       }
 
-      let updateResponse = await fetch(`${API_BASE_URL}/user/update_profile/`, {
+      let updateResponse = await fetch(`${API_BASE_URL}/user/update_profile`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -106,7 +106,7 @@ export default function SettingsPage() {
       if (updateResponse.status === 401) {
         try {
           token = await refreshAccessToken();
-          updateResponse = await fetch(`${API_BASE_URL}/user/update_profile/`, {
+          updateResponse = await fetch(`${API_BASE_URL}/user/update_profile`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -130,7 +130,7 @@ export default function SettingsPage() {
         throw new Error(errorData.detail || "Profilni yangilashda xato yuz berdi.");
       }
 
-      let meResponse = await fetch(`${API_BASE_URL}/user/me/`, {
+      let meResponse = await fetch(`${API_BASE_URL}/user/me`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -141,7 +141,7 @@ export default function SettingsPage() {
       if (meResponse.status === 401) {
         try {
           token = await refreshAccessToken();
-          meResponse = await fetch(`${API_BASE_URL}/user/me/`, {
+          meResponse = await fetch(`${API_BASE_URL}/user/me`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -206,7 +206,7 @@ export default function SettingsPage() {
         throw new Error("Tizimga qayta kiring, token topilmadi.");
       }
 
-      const response = await fetch(`${API_BASE_URL}/user/change_password/`, {
+      const response = await fetch(`${API_BASE_URL}/user/change_password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -221,7 +221,7 @@ export default function SettingsPage() {
       if (response.status === 401) {
         try {
           token = await refreshAccessToken();
-          const retryResponse = await fetch(`${API_BASE_URL}/user/change_password/`, {
+          const retryResponse = await fetch(`${API_BASE_URL}/user/change_password`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
