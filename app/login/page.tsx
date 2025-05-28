@@ -42,13 +42,13 @@ export default function LoginPage() {
     }
   }
 
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+ const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setForgotError("")
     setIsForgotLoading(true)
 
     try {
-      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/forgot_password", {
+      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/forgot-password/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -70,7 +70,7 @@ export default function LoginPage() {
     } finally {
       setIsForgotLoading(false)
     }
-  }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4">
