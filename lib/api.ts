@@ -322,7 +322,7 @@ export async function fetchPendingOrders() {
 }
 
 export async function fetchUsers() {
-  return fetchWithAuth("/user/all_users/");
+  return fetchWithAuth("/user/all_users");
 }
 
 export async function uuploadAnnouncementImages(formData: FormData, token: string | null = null) {
