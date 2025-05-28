@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Monitor, AlertCircle } from "lucide-react"
+import { Monitor, AlertCircle, X } from "lucide-react"
 import { Toaster, toast } from "react-hot-toast"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -20,6 +20,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState("")
+  const [forgotError, setForgotError] = useState("")
+  const [isForgotLoading, setIsForgotLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,6 +39,36 @@ export default function LoginPage() {
       toast.error("Tizimga kirishda xato yuz berdi!")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setForgotError("")
+    setIsForgotLoading(true)
+
+    try {
+      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/forgot_password/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: forgotEmail }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || "Parolni tiklashda xato yuz berdi.")
+      }
+
+      toast.success("Yangi parol email manzilingizga yuborildi!")
+      setIsForgotPasswordOpen(false)
+      setForgotEmail("")
+    } catch (err: any) {
+      setForgotError(err.message || "Server bilan bog'lanishda xato yuz berdi.")
+      toast.error(err.message || "Parolni tiklashda xato yuz berdi!")
+    } finally {
+      setIsForgotLoading(false)
     }
   }
 
@@ -75,6 +109,13 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Parol</Label>
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:underline"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                  >
+                    Parolni unutdingizmi?
+                  </button>
                 </div>
                 <Input
                   id="password"
@@ -98,6 +139,52 @@ export default function LoginPage() {
             </CardFooter>
           </form>
         </Card>
+
+        {/* Forgot Password Modal */}
+        {isForgotPasswordOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-800">Parolni tiklash</h2>
+                <button
+                  onClick={() => setIsForgotPasswordOpen(false)}
+                  className="text-gray-600 hover:text-gray-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <form onSubmit={handleForgotPasswordSubmit}>
+                <div className="space-y-4">
+                  {forgotError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{forgotError}</AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">Elektron pochta</Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      placeholder="sizning@email.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isForgotLoading}
+                  >
+                    {isForgotLoading ? "Yuborilmoqda..." : "Yuborish"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         <Toaster />
       </div>
     </div>
