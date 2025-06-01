@@ -48,7 +48,7 @@ export default function LoginPage() {
     setIsForgotLoading(true)
 
     try {
-      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/forgot-password", {
+      const response = await fetch("https://pc.ustaxona.bazarchi.software/api/v1/user/forgot-password/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
