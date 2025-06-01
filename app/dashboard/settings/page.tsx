@@ -168,7 +168,9 @@ export default function SettingsPage() {
         phone: updatedUser.phone,
         role: updatedUser.role,
         is_legal: updatedUser.is_legal,
-        profile_image: updatedUser.profile_image,
+        profile_image: updatedUser.profile_image.startsWith('http')
+          ? updatedUser.profile_image
+          : `${API_BASE_URL}${updatedUser.profile_image}`,
       });
 
       setProfileForm({
